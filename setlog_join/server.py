@@ -1,9 +1,12 @@
 """スマホから操作するためのローカルサーバー。ビルド済みの UI と API を配信する。"""
 
+import sys
+import traceback
 from pathlib import Path
 from urllib.parse import unquote
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -75,6 +78,23 @@ def create_app(
     jobs = jobs or JobManager(workspace)
     # API の仕様書の画面は使わないので公開しない
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # 検証の詳細の一覧ではなく、利用者が次に取る操作を返す
+        return JSONResponse(
+            {"detail": "送られた内容が正しくありません。画面を再読み込みしてから、もう一度お試しください"},
+            status_code=422,
+        )
+
+    @app.exception_handler(Exception)
+    async def unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # 原因は Mac のターミナルに残し、画面には次に取る操作だけを返す
+        traceback.print_exception(exc, file=sys.stderr)
+        return JSONResponse(
+            {"detail": "Mac 側で問題が起きました。もう一度お試しください。続くときは、Mac のターミナルの表示を確かめてください"},
+            status_code=500,
+        )
 
     @app.middleware("http")
     async def guard(request: Request, call_next):

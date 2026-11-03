@@ -1,3 +1,4 @@
+import io
 import tempfile
 import time
 import unittest
@@ -402,6 +403,26 @@ class VideosApiTest(ServerTestCase):
         names = [v["name"] for v in self.client.get("/api/project").json()["videos"]]
         self.assertEqual(names, ["later", "setlog"])
         self.assertEqual(self.client.get("/api/clips").json()[0]["video"], "later")
+
+
+class ErrorResponseTest(ServerTestCase):
+    def test_validation_errors_are_explained_in_plain_words(self):
+        self.login()
+        response = self.client.patch("/api/settings", json={"speed": "fast"})
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json(), {"detail": "送られた内容が正しくありません。画面を再読み込みしてから、もう一度お試しください"})
+
+    def test_unexpected_errors_return_a_next_step_and_log_the_cause(self):
+        self.login()
+        client = TestClient(create_app(self.workspace, self.auth, self.web_dir), raise_server_exceptions=False)
+        client.cookies = self.client.cookies
+        with mock.patch.object(Workspace, "summary", side_effect=RuntimeError("disk exploded")), \
+                mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            response = client.get("/api/project")
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Mac 側で問題が起きました", response.json()["detail"])
+        self.assertNotIn("disk exploded", response.text)
+        self.assertIn("disk exploded", stderr.getvalue())
 
 
 class MediaAuthTest(ServerTestCase):
