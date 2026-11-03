@@ -1,0 +1,23 @@
+# 依存パッケージの更新を、週に 1 回 PR で届ける。
+# 開発用の依存（ESLint・Vitest など）の更新は 1 つの PR にまとめ、PR の数を抑える。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      development:
+        dependency-type: development
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
