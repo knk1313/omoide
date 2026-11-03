@@ -8,8 +8,3 @@ input/*
 .setlog-join/
 output/*
 !output/.gitkeep
-
-# UI 移行の作業用メモ（コミットしない）
-MIGRATION_PROGRESS.md
-docs/migration-decisions.md
-CHANGELOG.md
