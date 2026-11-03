@@ -53,5 +53,6 @@ export const loggedIn = {
     "GET /api/health": { status: 200, body: { status: "ok" } },
     "GET /api/project": { status: 200, body: sampleProject },
     "GET /api/clips": { status: 200, body: sampleClips },
+    "POST /api/preview": { status: 202, body: { id: "job-1", kind: "preview", status: "queued", progress: 0, error: null, url: null } },
 };
 export const notLoggedIn = { "GET /api/health": { status: 401, body: { detail: "ログインしてください" } } };
