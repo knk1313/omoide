@@ -13,7 +13,8 @@ from .probe import VideoInfo
 
 CLIP_SECONDS = 2.0
 WINDOW_SECONDS = 0.5
-_FRAME_W, _FRAME_H = 64, 36
+# 境界検出と黒フレームの判定に使う縮小サイズ
+SMALL_WIDTH, SMALL_HEIGHT = 64, 36
 
 
 @dataclass(frozen=True)
@@ -27,15 +28,20 @@ class Clip:
         return self.end - self.start
 
 
-def frame_diffs(path: Path) -> np.ndarray:
+def read_small_frames(path: Path) -> np.ndarray:
+    """全フレームを縮小したグレースケール (n, SMALL_HEIGHT, SMALL_WIDTH) で返す。"""
+    return ffmpeg.gray_frames(
+        "-i", str(path), "-vf", f"scale={SMALL_WIDTH}:{SMALL_HEIGHT}",
+        width=SMALL_WIDTH, height=SMALL_HEIGHT,
+    )
+
+
+def frame_diffs(frames: np.ndarray) -> np.ndarray:
     """diffs[i] はフレーム i-1 と i の平均輝度差。diffs[0] は 0。"""
-    frames = ffmpeg.gray_frames(
-        "-i", str(path), "-vf", f"scale={_FRAME_W}:{_FRAME_H}",
-        width=_FRAME_W, height=_FRAME_H,
-    ).reshape(-1, _FRAME_H * _FRAME_W)
+    flat = frames.reshape(len(frames), -1).astype(np.int16)
     diffs = np.zeros(len(frames))
     if len(frames) > 1:
-        diffs[1:] = np.abs(np.diff(frames.astype(np.int16), axis=0)).mean(axis=1)
+        diffs[1:] = np.abs(np.diff(flat, axis=0)).mean(axis=1)
     return diffs
 
 
@@ -64,4 +70,4 @@ def detect_clips(
 
 
 def split_video(info: VideoInfo) -> list[Clip]:
-    return detect_clips(frame_diffs(info.path), info.fps)
+    return detect_clips(frame_diffs(read_small_frames(info.path)), info.fps)
