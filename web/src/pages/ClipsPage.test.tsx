@@ -20,13 +20,14 @@ const tiles = () => screen.getAllByRole("button").filter((b) => b.hasAttribute("
 const tile = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}（`) });
 
 describe("クリップ選択画面", () => {
-    it("動画ごとに、撮影日を見出しにしてパネルを並べる", async () => {
+    it("動画ごとに、入力した撮影日を見出しにしてパネルを並べる", async () => {
         await openClips();
-        const september = screen.getByRole("region", { name: /2026年9月19日/ });
+        // メタデータの日付（9月19日）ではなく、利用者が入力した日付（9月20日）
+        const september = screen.getByRole("region", { name: /2026年9月20日/ });
         expect(within(september).getAllByRole("button", { pressed: true })).toHaveLength(1);
         expect(within(september).getByRole("button", { name: "ユーザー3・クリップ 2（除外）" })).toHaveAttribute("aria-pressed", "false");
-        // 撮影日が分からない動画は、動画名を見出しにする
-        expect(screen.getByRole("region", { name: "oct" })).toBeInTheDocument();
+        // 撮影日を入力していない動画は、そのことを見出しにする
+        expect(screen.getByRole("region", { name: "撮影日が未入力" })).toHaveTextContent("oct");
     });
 
     it("サムネイルは画面に入るまで読み込まない", async () => {
@@ -90,7 +91,7 @@ describe("クリップ選択画面", () => {
             "ユーザー2・クリップ 1（採用）",
         ]);
         // 表示していない動画の見出しは出さない
-        expect(screen.queryByRole("region", { name: "oct" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "撮影日が未入力" })).not.toBeInTheDocument();
 
         await user.click(within(filter).getByRole("radio", { name: /^全員/ }));
         expect(tiles()).toHaveLength(3);
@@ -205,9 +206,9 @@ describe("クリップ選択画面", () => {
         expect(screen.getByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
 
-    it("パネルが 1 件も無ければ、動画を置くよう案内する", async () => {
+    it("パネルが 1 件も無ければ、動画を取り込む画面へ移る", async () => {
         fakeServer({ ...loggedIn, "GET /api/clips": { status: 200, body: [] } });
         renderApp("/");
-        expect(await screen.findByText("選べるクリップがありません")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "動画を取り込む" })).toBeInTheDocument();
     });
 });

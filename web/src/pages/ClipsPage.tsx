@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Film } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { PanelClip, Project } from "@/api/types";
 import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
 import Button from "@/components/Button";
-import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/Toast";
-import { formatDate, formatSeconds } from "@/lib/format";
+import { formatDay, formatSeconds } from "@/lib/format";
 import { useSession } from "@/session/Session";
 import ClipPlayer from "./clips/ClipPlayer";
 import ClipTile from "./clips/ClipTile";
@@ -112,13 +110,8 @@ export default function ClipsPage() {
         return <p className="pt-8 text-center text-sm text-muted">読み込んでいます…</p>;
     }
     if (data.clips.length === 0) {
-        return (
-            <EmptyState
-                icon={<Film className="h-10 w-10" />}
-                title="選べるクリップがありません"
-                message="Mac の input/ に Setlog の動画を置いてから、serve を起動し直してください。"
-            />
-        );
+        // 動画がまだ無ければ、取り込む画面から始める
+        return <Navigate to="/videos" replace />;
     }
 
     // 採用数と推定時間は、選択と速度から毎回計算する（状態として持たない）
@@ -224,19 +217,19 @@ function listUsers(data: Loaded | null): User[] {
 
 type Section = { video: string; title: string; subtitle: string; clips: PanelClip[] };
 
-// 動画ごとにまとめ、撮影日が分かれば見出しにする
+// 動画ごとにまとめ、利用者が入力した撮影日を見出しにする（並び順はサーバーが撮影日の順にしている）
 function groupByVideo(data: Loaded | null): Section[] {
     if (!data) return [];
-    const createdAt = new Map(data.project.videos.map((v) => [v.name, v.created_at]));
+    const dates = new Map(data.project.videos.map((v) => [v.name, v.date]));
     const sections = new Map<string, Section>();
     for (const clip of data.clips) {
         let section = sections.get(clip.video);
         if (!section) {
-            const created = createdAt.get(clip.video);
+            const date = dates.get(clip.video);
             section = {
                 video: clip.video,
-                title: created ? formatDate(created) : clip.video,
-                subtitle: created ? clip.video : "",
+                title: date ? formatDay(date) : "撮影日が未入力",
+                subtitle: clip.video,
                 clips: [],
             };
             sections.set(clip.video, section);

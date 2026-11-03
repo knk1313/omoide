@@ -10,7 +10,17 @@ export type Project = {
     selected_count: number;
     /** 採用したパネルを選んだ速度でつないだときの長さ（秒）。 */
     estimated_seconds: number;
-    videos: { name: string; created_at: string | null; panel_count: number }[];
+    videos: Video[];
+};
+
+export type Video = {
+    name: string;
+    created_at: string | null;
+    /** 動画のメタデータから読んだ撮影日（`2026-09-19`）。日付を入力するときの初期値。 */
+    metadata_date: string | null;
+    /** 利用者が入力した撮影日（`2026-09-19`）。入力していなければ null。 */
+    date: string | null;
+    panel_count: number;
 };
 
 export type PanelClip = {
@@ -32,7 +42,7 @@ export type PanelClip = {
     video_url: string;
 };
 
-export type JobKind = "preview" | "export";
+export type JobKind = "preview" | "export" | "analyze";
 export type JobStatus = "queued" | "running" | "done" | "failed";
 
 export type Job = {
@@ -45,4 +55,6 @@ export type Job = {
     error: string | null;
     /** 作り終えたときの再生先またはダウンロード先。 */
     url: string | null;
+    /** 取り込んだ動画の解析を終えたときの、その動画。 */
+    result: Video | null;
 };

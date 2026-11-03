@@ -6,7 +6,7 @@ import { renderApp } from "@/test/renderApp";
 import { polling } from "./preview/useJob";
 
 const job = (kind: Job["kind"], status: Job["status"], progress: number, extra: Partial<Job> = {}): Job => ({
-    id: `${kind}-1`, kind, status, progress, error: null,
+    id: `${kind}-1`, kind, status, progress, error: null, result: null,
     url: status === "done" ? (kind === "preview" ? "/media/preview?v=preview-1" : "/download/output") : null,
     ...extra,
 });
@@ -157,9 +157,9 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(video).toHaveAttribute("height", "634");
     });
 
-    it("手順の表示は 3 番目", async () => {
+    it("手順の表示は 4 番目", async () => {
         await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
         const steps = screen.getByRole("list", { name: "手順" });
-        expect(within(steps).getByText("3. 確認")).toHaveAttribute("aria-current", "step");
+        expect(within(steps).getByText("4. 確認")).toHaveAttribute("aria-current", "step");
     });
 });

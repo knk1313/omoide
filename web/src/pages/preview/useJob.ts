@@ -11,7 +11,7 @@ export const polling = { intervalMs: 700 };
  * 始められなかったときや途中で取れなくなったときは error に利用者向けの文言を入れる。
  * ログイン切れ・期限切れ・接続切れは画面ごと切り替える（useSession の handleError）。
  */
-export function useJob(kind: JobKind) {
+export function useJob(kind: Exclude<JobKind, "analyze">) {
     const { handleError } = useSession();
     const [job, setJob] = useState<Job | null>(null);
     const [error, setError] = useState<string | null>(null);

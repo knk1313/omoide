@@ -1,4 +1,4 @@
-import type { Job, JobKind, PanelClip, Project, Speed } from "./types";
+import type { Job, JobKind, PanelClip, Project, Speed, Video } from "./types";
 
 /** API がエラーを返した。status で場面を見分け、detail をそのまま利用者に見せてよい。 */
 export class ApiError extends Error {
@@ -22,6 +22,40 @@ export class ApiError extends Error {
 }
 
 const NETWORK_ERROR = "Mac につながりません。Mac と同じ Wi-Fi に接続しているか、Mac でサーバーが動いているかを確かめてください";
+
+/**
+ * 動画を送り、解析のジョブを返す。fetch では送った量が分からないので、XMLHttpRequest で進み具合（0〜1）を知らせる。
+ */
+export function uploadVideo(file: File, onProgress: (sent: number) => void): Promise<Job> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/videos");
+        // 日本語などを含む名前も送れるよう、URL エンコードする
+        xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) onProgress(e.loaded / e.total);
+        };
+        xhr.onload = () => {
+            let body: unknown = null;
+            try {
+                body = JSON.parse(xhr.responseText);
+            } catch {
+                // JSON でない応答は、下で文言を付ける
+            }
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(body as Job);
+                return;
+            }
+            const detail =
+                body && typeof body === "object" && "detail" in body && typeof body.detail === "string"
+                    ? body.detail
+                    : `エラーが発生しました（${xhr.status}）`;
+            reject(new ApiError(xhr.status, detail));
+        };
+        xhr.onerror = () => reject(new ApiError(0, NETWORK_ERROR));
+        xhr.send(file);
+    });
+}
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let response: Response;
@@ -68,7 +102,9 @@ export const api = {
     selectAll: (selected: boolean, options: { panel?: number; only?: boolean } = {}) =>
         request<Project>("POST", "/api/clips/select-all", { selected, ...options }),
     setSpeed: (speed: Speed) => request<Project>("PATCH", "/api/settings", { speed }),
-    startJob: (kind: JobKind) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
+    setVideoDate: (name: string, date: string | null) =>
+        request<Video>("PATCH", `/api/videos/${encodeURIComponent(name)}`, { date }),
+    startJob: (kind: Exclude<JobKind, "analyze">) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
     job: (id: string) => request<Job>("GET", `/api/jobs/${encodeURIComponent(id)}`),
     clearTemporary: () => request<{ status: "ok" }>("DELETE", "/api/temporary"),
 };

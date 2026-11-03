@@ -48,8 +48,8 @@ export const sampleProject: Project = {
     selected_count: 2,
     estimated_seconds: 4,
     videos: [
-        { name: "sep", created_at: "2026-09-19T05:21:54+00:00", panel_count: 2 },
-        { name: "oct", created_at: null, panel_count: 1 },
+        { name: "sep", created_at: "2026-09-19T05:21:54+00:00", metadata_date: "2026-09-19", date: "2026-09-20", panel_count: 2 },
+        { name: "oct", created_at: null, metadata_date: null, date: null, panel_count: 1 },
     ],
 };
 

@@ -78,9 +78,9 @@ describe("出力設定画面", () => {
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
 
-    it("手順の表示は 2 番目", async () => {
+    it("手順の表示は 3 番目", async () => {
         await openSettings();
         const steps = screen.getByRole("list", { name: "手順" });
-        expect(within(steps).getByText("2. 速度")).toHaveAttribute("aria-current", "step");
+        expect(within(steps).getByText("3. 速度")).toHaveAttribute("aria-current", "step");
     });
 });

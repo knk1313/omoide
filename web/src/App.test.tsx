@@ -11,17 +11,17 @@ describe("画面の骨組み", () => {
     it("クリップ選択から速度、プレビューへ順に進める", async () => {
         const { user } = renderApp("/");
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
-        expect(screen.getByText("1. 選ぶ")).toHaveAttribute("aria-current", "step");
+        expect(screen.getByText("2. 選ぶ")).toHaveAttribute("aria-current", "step");
 
         await user.click(screen.getByRole("button", { name: "次へ" }));
         // 速度の画面は、要約を読み込んでから見出しを出すので、待つ
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
-        expect(screen.getByText("2. 速度")).toHaveAttribute("aria-current", "step");
+        expect(screen.getByText("3. 速度")).toHaveAttribute("aria-current", "step");
 
         await user.click(await screen.findByRole("button", { name: "プレビューを生成" }));
         // 生成を頼んだ応答の後で移るので、待つ
         expect(await screen.findByRole("heading", { name: "プレビューを確認" })).toBeInTheDocument();
-        expect(screen.getByText("3. 確認")).toHaveAttribute("aria-current", "step");
+        expect(screen.getByText("4. 確認")).toHaveAttribute("aria-current", "step");
 
         await user.click(screen.getByRole("button", { name: "速度を変える" }));
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
