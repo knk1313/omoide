@@ -65,7 +65,10 @@ describe("クリップ選択画面", () => {
         expect(screen.getByText("1 件以上選んでください")).toBeInTheDocument();
         expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: false } });
 
-        await user.click(screen.getByRole("button", { name: "全選択" }));
+        // 保存が終わるまでは全選択・全解除を押せない
+        const selectAll = screen.getByRole("button", { name: "全選択" });
+        await waitFor(() => expect(selectAll).toBeEnabled());
+        await user.click(selectAll);
         expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(3);
         expect(screen.getByRole("button", { name: "次へ" })).toBeEnabled();
     });

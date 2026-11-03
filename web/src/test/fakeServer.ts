@@ -16,8 +16,11 @@ export function fakeServer(routes: Record<string, Handler>) {
         calls.push({ method, path, body });
         const handler = routes[`${method} ${path}`];
         if (handler === undefined) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
             return new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 });
         }
+        // 実際の通信と同じく少し待ってから応答し、応答を待たずに画面を確かめるテストの誤りを見つけやすくする
+        await new Promise((resolve) => setTimeout(resolve, 20));
         const reply = typeof handler === "function" ? handler(body) : handler;
         if (reply instanceof Error) throw reply;
         return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status });

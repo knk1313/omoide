@@ -92,7 +92,9 @@ describe("プレビュー・ダウンロード画面", () => {
             "POST /api/export": accepted(job("export", "running", 0)),
             "GET /api/jobs/export-1": sequence(ok(job("export", "running", 0.5)), ok(job("export", "done", 1))),
         });
-        await user.click(await screen.findByRole("button", { name: "完成版を作る" }));
+        // プレビューができてから、完成版を作れる
+        await screen.findByLabelText("プレビュー動画");
+        await user.click(screen.getByRole("button", { name: "完成版を作る" }));
         expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
 
         const save = await screen.findByRole("link", { name: "保存する" });
