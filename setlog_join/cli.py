@@ -10,6 +10,7 @@ from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segme
 from .probe import VideoInfo
 from .cache import load_or_scan
 from .scan import VideoScan
+from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,6 +55,7 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
             scan = load_or_scan(info)
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
+        ensure_thumbnails(scan)
         _print_scan(scan)
         if export_dir is not None:
             export_video(scan, export_dir)
@@ -63,6 +65,7 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     total_candidates = sum(s.candidate_count for s in scans)
     total_seconds = sum(s.info.duration for s in scans)
     print(f"\n合計: 動画 {len(scans)} 本 / {total_clips} クリップ / 中身のあるパネル {total_candidates} 件 / {total_seconds:.1f}s")
+    print(f"サムネイル: {THUMBNAIL_DIR}/")
     if export_dir is not None:
         print(f"切り出したパネル動画: {export_dir}/")
     return 0
