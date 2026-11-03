@@ -180,7 +180,7 @@ class ClipsApiTest(ServerTestCase):
         clips = self.client.get("/api/clips").json()
         self.assertEqual([c["id"] for c in clips], ["setlog/001-1", "setlog/001-3", "setlog/002-2"])
         self.assertEqual(clips[1], {
-            "id": "setlog/001-3", "video": "setlog", "clip": 1, "panel": 3, "label": "下", "width": 640, "height": 360,
+            "id": "setlog/001-3", "video": "setlog", "clip": 1, "panel": 3, "label": "ユーザー3", "width": 640, "height": 360,
             "start": 0.0, "duration": 2.0, "selected": True,
             "thumbnail_url": "/media/thumbnails/setlog/001-3", "video_url": "/media/clips/setlog/001-3",
         })

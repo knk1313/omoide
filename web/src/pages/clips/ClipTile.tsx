@@ -14,7 +14,8 @@ type Props = {
 // 数百件並ぶので memo にし、ほかのタイルの切り替えでは描き直さない。
 function ClipTile({ clip, onToggle, onPlay }: Props) {
     const { handlers, consumeClick } = useLongPress(() => onPlay(clip));
-    const name = `クリップ ${clip.clip}・${clip.label}`;
+    // 画面には「ユーザー1」だけを出す。読み上げでは同じ名前のタイルを区別できるよう、クリップの番号も付ける
+    const name = `${clip.label}・クリップ ${clip.clip}`;
 
     return (
         <li className="relative">
@@ -58,7 +59,7 @@ function ClipTile({ clip, onToggle, onPlay }: Props) {
                     )}
                 </span>
                 <span className="flex h-8 items-center justify-between gap-1 px-2 text-xs text-muted">
-                    <span className="truncate">{name}</span>
+                    <span className="truncate">{clip.label}</span>
                     <span className="shrink-0 tabular-nums">{formatSeconds(clip.duration)}</span>
                 </span>
             </button>

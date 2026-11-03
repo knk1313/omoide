@@ -32,7 +32,7 @@ export function fakeServer(routes: Record<string, Handler>) {
 function panel(video: string, clip: number, panel: number, selected = true): PanelClip {
     const id = `${video}/${String(clip).padStart(3, "0")}-${panel}`;
     return {
-        id, video, clip, panel, label: ["上", "中", "下"][panel - 1], width: 1160, height: 634,
+        id, video, clip, panel, label: `ユーザー${panel}`, width: 1160, height: 634,
         start: (clip - 1) * 2, duration: 2, selected,
         thumbnail_url: `/media/thumbnails/${id}`, video_url: `/media/clips/${id}`,
     };

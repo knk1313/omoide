@@ -3,7 +3,7 @@ import type { PanelClip } from "@/api/types";
 
 // パネル単体を再生する。iPhone で全画面にならないよう playsInline、自動で始めるため muted にする（音声は持たない）。
 export default function ClipPlayer({ clip, onClose }: { clip: PanelClip; onClose: () => void }) {
-    const name = `クリップ ${clip.clip}・${clip.label}`;
+    const name = `${clip.label}・クリップ ${clip.clip}`;
     return (
         <Modal onClose={onClose} label={`${name}の再生`}>
             <figure className="flex w-full max-w-md flex-col gap-2">
@@ -20,7 +20,7 @@ export default function ClipPlayer({ clip, onClose }: { clip: PanelClip; onClose
                     playsInline
                     className="h-auto w-full rounded-surface bg-scrim"
                 />
-                <figcaption className="text-center text-sm text-on-dark">{name}</figcaption>
+                <figcaption className="text-center text-sm text-on-dark">{clip.label}</figcaption>
             </figure>
         </Modal>
     );

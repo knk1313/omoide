@@ -125,7 +125,6 @@ export default function SettingsPage() {
                         );
                     })}
                 </div>
-                <p className="text-xs text-muted">すべてのクリップに同じ速度をかけます。</p>
             </fieldset>
 
             {(startError || nothingSelected) && (
