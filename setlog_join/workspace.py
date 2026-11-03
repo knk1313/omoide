@@ -5,13 +5,14 @@ API ではパネルを ID で指定させ、ファイルのパスはここで ID
 
 import hashlib
 import json
+import shutil
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 
 from .cache import CACHE_VERSION, file_stamp, video_key
 from .export import export_panel_clip
-from .join import SPEEDS, PanelRef
+from .join import SPEEDS, PanelRef, Segment, resolve_segments
 from .panels import Panel
 from .project import PROJECT_PATH, Project, load_project, save_project
 from .scan import ScannedClip, VideoScan
@@ -106,6 +107,15 @@ class Workspace:
                 for scan in self.scans
             ],
         }
+
+    def selected_segments(self) -> list[Segment]:
+        """採用したパネルを、つなぐ順 (人ごと、各人の中では時系列) に並べる。無ければ SelectionError。"""
+        return resolve_segments(self.scans, self.project.selected_refs(self.scans))
+
+    def clear_clips(self) -> None:
+        """パネル単体の動画を消す。次に要求されたときに作り直す。"""
+        with self._media_lock:
+            shutil.rmtree(self._clip_dir, ignore_errors=True)
 
     def thumbnail_path(self, entry: PanelEntry) -> Path:
         return self._thumbnail_dir / video_key(entry.scan.info) / f"{entry.ref.clip:03d}-{entry.ref.panel}.jpg"

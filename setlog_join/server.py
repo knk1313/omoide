@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import Scope
 
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
+from .jobs import InsufficientSpace, JobManager, JobsBusy, NothingSelected
 from .workspace import PanelEntry, Workspace
 
 WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -51,7 +52,10 @@ class SettingsRequest(BaseModel):
     speed: float
 
 
-def create_app(workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST) -> FastAPI:
+def create_app(
+    workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST, jobs: JobManager | None = None,
+) -> FastAPI:
+    jobs = jobs or JobManager(workspace)
     # API の仕様書の画面は使わないので公開しない
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -65,8 +69,8 @@ def create_app(workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST) 
         # 共有 URL を開いていない端末には、サーバーがあることも見せない
         if not auth.token_matches(request.cookies.get(GATE_COOKIE)):
             return JSONResponse({"detail": "Not Found"}, status_code=404)
-        # 動画とサムネイル (/media/) も、ログインしていなければ渡さない
-        if path.startswith(("/api/", "/media/")) and path != _LOGIN_PATH:
+        # 動画・サムネイル (/media/) と完成版 (/download/) も、ログインしていなければ渡さない
+        if path.startswith(("/api/", "/media/", "/download/")) and path != _LOGIN_PATH:
             if not auth.session_valid(request.cookies.get(SESSION_COOKIE)):
                 return JSONResponse({"detail": "ログインしてください"}, status_code=401)
         return await call_next(request)
@@ -133,6 +137,44 @@ def create_app(workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST) 
             raise HTTPException(status_code=422, detail=str(e)) from e
         return workspace.summary()
 
+    @app.post("/api/preview", status_code=202)
+    def start_preview() -> dict:
+        return _start(jobs, "preview")
+
+    @app.post("/api/export", status_code=202)
+    def start_export() -> dict:
+        return _start(jobs, "export")
+
+    @app.get("/api/jobs/{job_id}")
+    def job_status(job_id: str) -> dict:
+        try:
+            return jobs.get(job_id).to_json()
+        except KeyError:
+            raise HTTPException(status_code=404, detail="ジョブがありません") from None
+
+    @app.delete("/api/temporary")
+    def clear_temporary() -> dict:
+        try:
+            jobs.clear_temporary()
+        except JobsBusy as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+        return {"status": "ok"}
+
+    @app.get("/media/preview")
+    def preview() -> FileResponse:
+        job = jobs.latest_done("preview")
+        if job is None:
+            raise HTTPException(status_code=404, detail="プレビューがまだありません")
+        return FileResponse(job.path, media_type="video/mp4")
+
+    @app.get("/download/output")
+    def download() -> FileResponse:
+        job = jobs.latest_done("export")
+        if job is None:
+            raise HTTPException(status_code=404, detail="完成版がまだありません")
+        # スマホで再生画面ではなく保存に進むよう、添付ファイルとして返す
+        return FileResponse(job.path, media_type="video/mp4", filename=job.path.name)
+
     @app.get("/media/thumbnails/{panel_id:path}")
     def thumbnail(panel_id: str) -> FileResponse:
         path = workspace.thumbnail_path(_find(workspace, panel_id))
@@ -158,6 +200,15 @@ def create_app(workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST) 
             return _NOT_BUILT_HTML
 
     return app
+
+
+def _start(jobs: JobManager, kind: str) -> dict:
+    try:
+        return jobs.start(kind).to_json()
+    except NothingSelected as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except InsufficientSpace as e:
+        raise HTTPException(status_code=507, detail=str(e)) from e
 
 
 def _find(workspace: Workspace, panel_id: str) -> PanelEntry:

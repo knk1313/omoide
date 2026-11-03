@@ -1,4 +1,5 @@
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -6,6 +7,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from setlog_join.auth import ShareAuth
+from setlog_join.jobs import JobManager
 from setlog_join.panels import Panel
 from setlog_join.probe import VideoInfo
 from setlog_join.scan import ScannedClip, VideoScan
@@ -231,10 +233,73 @@ class ClipsApiTest(ServerTestCase):
         self.assertEqual(outside.status_code, 416)
 
 
+class JobsApiTest(ServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.free = 10**12
+
+        def runner(segments, speed, out, quality, progress):
+            out.write_bytes(b"0123456789" * 100)
+            progress(1.0)
+
+        self.jobs = JobManager(self.workspace, self.data_dir / "previews", self.data_dir / "output", runner,
+                               free_bytes=lambda path: self.free)
+        self.addCleanup(self.jobs.shutdown)
+        self.client = TestClient(create_app(self.workspace, self.auth, self.web_dir, self.jobs), follow_redirects=False)
+        self.login()
+
+    def wait(self, job: dict) -> dict:
+        for _ in range(500):
+            if job["status"] not in ("queued", "running"):
+                return job
+            time.sleep(0.01)
+            job = self.client.get(f"/api/jobs/{job['id']}").json()
+        self.fail("job did not finish")
+
+    def test_preview_then_play_it(self):
+        self.assertEqual(self.client.get("/media/preview").status_code, 404)
+        response = self.client.post("/api/preview")
+        self.assertEqual(response.status_code, 202)
+        job = self.wait(response.json())
+        self.assertEqual((job["status"], job["progress"]), ("done", 1.0))
+        preview = self.client.get(job["url"], headers={"Range": "bytes=0-9"})
+        self.assertEqual(preview.status_code, 206)
+        self.assertEqual(preview.content, b"0123456789")
+
+    def test_export_then_download_it_as_an_attachment(self):
+        self.assertEqual(self.client.get("/download/output").status_code, 404)
+        job = self.wait(self.client.post("/api/export").json())
+        response = self.client.get(job["url"])
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-disposition"].startswith("attachment;"))
+        self.assertIn("omoide-", response.headers["content-disposition"])
+
+    def test_errors_tell_the_user_what_to_do(self):
+        self.client.post("/api/clips/select-all", json={"selected": False})
+        response = self.client.post("/api/preview")
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("クリップを選んでください", response.json()["detail"])
+
+        self.client.post("/api/clips/select-all", json={"selected": True})
+        self.free = 0
+        response = self.client.post("/api/export")
+        self.assertEqual(response.status_code, 507)
+        self.assertIn("空き容量", response.json()["detail"])
+
+    def test_unknown_job_is_404(self):
+        self.assertEqual(self.client.get("/api/jobs/nope").status_code, 404)
+
+    def test_clear_temporary(self):
+        self.wait(self.client.post("/api/preview").json())
+        self.assertEqual(self.client.delete("/api/temporary").status_code, 200)
+        self.assertEqual(self.client.get("/media/preview").status_code, 404)
+
+
 class MediaAuthTest(ServerTestCase):
     def test_media_requires_login(self):
         self.open_share()
-        for path in ("/media/thumbnails/setlog/001-1", "/media/clips/setlog/001-1", "/api/clips", "/api/project"):
+        for path in ("/media/thumbnails/setlog/001-1", "/media/clips/setlog/001-1", "/media/preview",
+                     "/download/output", "/api/clips", "/api/project", "/api/jobs/x"):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 401)
 
