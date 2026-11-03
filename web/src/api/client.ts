@@ -55,6 +55,8 @@ async function errorDetail(response: Response): Promise<string> {
 }
 
 export const api = {
+    /** ログインしていれば成功し、していなければ 401（共有 URL を開いていなければ 404）。 */
+    health: () => request<{ status: "ok" }>("GET", "/api/health"),
     login: (password: string) => request<{ status: "ok" }>("POST", "/api/session/login", { password }),
     logout: () => request<{ status: "ok" }>("POST", "/api/session/logout"),
     project: () => request<Project>("GET", "/api/project"),
