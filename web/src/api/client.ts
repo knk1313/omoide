@@ -57,8 +57,13 @@ export function uploadVideo(file: File, onProgress: (sent: number) => void): Pro
     });
 }
 
+/** API の要求を打ち切るまでの時間。Mac がスリープした直後は、応答が返らないまま待たされるため。 */
+export const requestTimeout = { ms: 15_000 };
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let response: Response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), requestTimeout.ms);
     try {
         response = await fetch(path, {
             method,
@@ -66,9 +71,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
             credentials: "same-origin",
             headers: body === undefined ? undefined : { "Content-Type": "application/json" },
             body: body === undefined ? undefined : JSON.stringify(body),
+            signal: controller.signal,
         });
     } catch {
+        // 打ち切った場合も、つながらない場合と同じに扱う
         throw new ApiError(0, NETWORK_ERROR);
+    } finally {
+        clearTimeout(timer);
     }
     if (!response.ok) {
         throw new ApiError(response.status, await errorDetail(response));

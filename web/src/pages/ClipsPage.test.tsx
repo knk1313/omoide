@@ -58,7 +58,7 @@ describe("クリップ選択画面", () => {
         const { user } = await openClips({ "PATCH /api/clips/sep/002-3": { status: 500, body: { detail: "保存できませんでした" } } });
         await user.click(tile("ユーザー3・クリップ 2"));
 
-        expect(await screen.findByRole("status")).toHaveTextContent("保存できませんでした");
+        expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした");
         expect(tile("ユーザー3・クリップ 2")).toHaveAttribute("aria-pressed", "false");
     });
 
@@ -202,7 +202,7 @@ describe("クリップ選択画面", () => {
     it("存在しないパネルの 404 では、QR コードの案内に切り替えない", async () => {
         const { user } = await openClips({ "PATCH /api/clips/sep/001-2": { status: 404, body: { detail: "パネルがありません" } } });
         await user.click(tile("ユーザー2・クリップ 1"));
-        expect(await screen.findByRole("status")).toHaveTextContent("パネルがありません");
+        expect(await screen.findByRole("alert")).toHaveTextContent("パネルがありません");
         expect(screen.getByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
 

@@ -44,7 +44,7 @@ describe("出力設定画面", () => {
     it("保存に失敗したら元の速度に戻して知らせる", async () => {
         const { user } = await openSettings({ "PATCH /api/settings": { status: 500, body: { detail: "保存できませんでした" } } });
         await user.click(radio(/^0.5x/));
-        expect(await screen.findByRole("status")).toHaveTextContent("保存できませんでした");
+        expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした");
         expect(radio(/^1x/)).toHaveAttribute("aria-checked", "true");
         expect(summary()).toHaveTextContent("約 4秒");
     });

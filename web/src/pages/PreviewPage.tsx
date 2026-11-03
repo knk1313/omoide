@@ -6,6 +6,7 @@ import type { Job, Project } from "@/api/types";
 import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
 import Button, { buttonClass } from "@/components/Button";
 import Card from "@/components/Card";
+import Video from "@/components/Video";
 import { useJob } from "./preview/useJob";
 
 export default function PreviewPage() {
@@ -39,7 +40,7 @@ export default function PreviewPage() {
                     <Failure message={preview.error} onRetry={() => void preview.start()} />
                 ) : previewReady && preview.job?.url ? (
                     // 再生枠を動画と同じ縦横比にし、上下や左右に黒い帯を出さない
-                    <video
+                    <Video
                         key={preview.job.url}
                         src={preview.job.url}
                         width={frame?.width}

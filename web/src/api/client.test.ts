@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, ApiError } from "./client";
+import { api, ApiError, requestTimeout } from "./client";
 
 function respond(status: number, body: unknown) {
     const fetchMock = vi.fn().mockResolvedValue(
@@ -54,5 +54,21 @@ describe("api", () => {
         const error = (await api.project().catch((e: unknown) => e)) as ApiError;
         expect(error.status).toBe(0);
         expect(error.message).toContain("Wi-Fi");
+    });
+
+    it("応答が返らないまま待たされたら打ち切り、つながらないものとして扱う", async () => {
+        const before = requestTimeout.ms;
+        requestTimeout.ms = 20;
+        // 打ち切られるまで返らない fetch
+        vi.stubGlobal("fetch", vi.fn((_: string, init: RequestInit) => new Promise((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        })));
+        try {
+            const error = (await api.project().catch((e: unknown) => e)) as ApiError;
+            expect(error.status).toBe(0);
+            expect(error.message).toContain("Wi-Fi");
+        } finally {
+            requestTimeout.ms = before;
+        }
     });
 });

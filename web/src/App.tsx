@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import AppLayout from "@/components/AppLayout";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import ClipsPage from "@/pages/ClipsPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -13,22 +14,24 @@ import { SessionProvider } from "@/session/Session";
 // ログインの状態は SessionProvider がアプリを開いたときに一度確かめる。
 export default function App() {
     return (
-        <BrowserRouter>
-            <SessionProvider>
-                <Routes>
-                    <Route element={<AppLayout />}>
-                        <Route path="/login" element={<LoginPage />} />
-                        {/* 手順の画面はログインしてから */}
-                        <Route element={<RequireSession />}>
-                            <Route path="/videos" element={<VideosPage />} />
-                            <Route path="/" element={<ClipsPage />} />
-                            <Route path="/settings" element={<SettingsPage />} />
-                            <Route path="/preview" element={<PreviewPage />} />
+        <ErrorBoundary>
+            <BrowserRouter>
+                <SessionProvider>
+                    <Routes>
+                        <Route element={<AppLayout />}>
+                            <Route path="/login" element={<LoginPage />} />
+                            {/* 手順の画面はログインしてから */}
+                            <Route element={<RequireSession />}>
+                                <Route path="/videos" element={<VideosPage />} />
+                                <Route path="/" element={<ClipsPage />} />
+                                <Route path="/settings" element={<SettingsPage />} />
+                                <Route path="/preview" element={<PreviewPage />} />
+                            </Route>
+                            <Route path="*" element={<NotFoundPage />} />
                         </Route>
-                        <Route path="*" element={<NotFoundPage />} />
-                    </Route>
-                </Routes>
-            </SessionProvider>
-        </BrowserRouter>
+                    </Routes>
+                </SessionProvider>
+            </BrowserRouter>
+        </ErrorBoundary>
     );
 }

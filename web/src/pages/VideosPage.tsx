@@ -9,12 +9,12 @@ import Card from "@/components/Card";
 import { useToast } from "@/components/Toast";
 import { formatDay } from "@/lib/format";
 import { useSession } from "@/session/Session";
-import { polling } from "./preview/useJob";
+import { isTransient, polling } from "./preview/useJob";
 
 /** 取り込みの段階。1 本ずつ、送る → 解析する → 撮影日を確かめる の順に進む。 */
 type Upload =
     | { stage: "sending"; fileName: string; sent: number }
-    | { stage: "analyzing"; fileName: string; job: Job }
+    | { stage: "analyzing"; fileName: string; job: Job; failures: number }
     | { stage: "date"; video: Video }
     | { stage: "failed"; fileName: string; message: string };
 
@@ -52,11 +52,14 @@ export default function VideosPage() {
                     } else if (job.status === "failed") {
                         setUpload({ stage: "failed", fileName: analyzing.fileName, message: job.error ?? "動画を読み取れませんでした" });
                     } else {
-                        setUpload({ ...analyzing, job });
+                        setUpload({ ...analyzing, job, failures: 0 });
                     }
                 },
                 (error: unknown) => {
-                    if (!handleError(error)) {
+                    // Wi-Fi が一瞬途切れただけなら、もう一度取りに行く
+                    if (isTransient(error, analyzing.failures + 1)) {
+                        setUpload({ ...analyzing, failures: analyzing.failures + 1 });
+                    } else if (!handleError(error)) {
                         setUpload({ stage: "failed", fileName: analyzing.fileName, message: "解析の進み具合を取得できませんでした" });
                     }
                 },
@@ -64,6 +67,15 @@ export default function VideosPage() {
         }, polling.intervalMs);
         return () => clearTimeout(timer);
     }, [analyzing, handleError]);
+
+    // 送っている間に画面を閉じたり再読み込みしたりすると中断するので、ブラウザの確認を出す
+    const sending = upload?.stage === "sending";
+    useEffect(() => {
+        if (!sending) return;
+        const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [sending]);
 
     async function chooseFile(e: ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -73,7 +85,7 @@ export default function VideosPage() {
         setUpload({ stage: "sending", fileName: file.name, sent: 0 });
         try {
             const job = await uploadVideo(file, (sent) => setUpload({ stage: "sending", fileName: file.name, sent }));
-            setUpload({ stage: "analyzing", fileName: file.name, job });
+            setUpload({ stage: "analyzing", fileName: file.name, job, failures: 0 });
         } catch (error) {
             if (handleError(error)) return;
             setUpload({ stage: "failed", fileName: file.name, message: error instanceof ApiError ? error.message : "送れませんでした" });
