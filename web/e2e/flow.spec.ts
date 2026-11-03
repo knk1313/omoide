@@ -132,6 +132,11 @@ test("速度を選び、プレビューを作って完成版を保存する", as
     await page.getByRole("button", { name: "完成版を作る" }).click();
     const save = page.getByRole("link", { name: "保存する" });
     await expect(save).toBeVisible();
+    // 名前を入れずに押すと、保存に進まずに理由を出す
+    await save.click();
+    await expect(page.getByLabel("ファイル名")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText("＊ファイル名を入力してください")).toBeVisible();
+    await expectNoAxeViolations(page, "ファイル名のエラー");
     await page.getByLabel("ファイル名").fill("9月の旅行");
     await expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
     await expectNoAxeViolations(page, "完成版の保存");

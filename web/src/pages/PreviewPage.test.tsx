@@ -100,14 +100,42 @@ describe("プレビュー・ダウンロード画面", () => {
 
         const save = await screen.findByRole("link", { name: "保存する" });
         expect(save).toHaveAttribute("download");
-        // 名前の初期値は omoide-<今日の日付>。変えると保存の名前も変わる
-        const name = screen.getByLabelText("ファイル名");
-        expect((name as HTMLInputElement).value).toMatch(/^omoide-\d{8}$/);
-        await user.clear(name);
+        // 名前は空から入力する。入力欄には当日の日付を使った例を出す
+        const name = screen.getByLabelText(/^ファイル名/);
+        expect(name).toHaveValue("");
+        expect(name).toHaveAttribute("placeholder", expect.stringMatching(/^例：\d{8}の動画$/));
         await user.type(name, "9月の旅行");
         expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
         expect(save).toHaveAttribute("download", "9月の旅行.mp4");
         expect(screen.getByText("完成版ができました")).toBeInTheDocument();
+    });
+
+    it("ファイル名が空や使えない文字なら、保存に進まずに入力欄の下に理由を出す", async () => {
+        const { user } = await openPreview({
+            "POST /api/preview": accepted(job("preview", "done", 1)),
+            "POST /api/export": accepted(job("export", "done", 1)),
+        });
+        await screen.findByLabelText("プレビュー動画");
+        await user.click(screen.getByRole("button", { name: "完成版を作る" }));
+        const save = await screen.findByRole("link", { name: "保存する" });
+        const name = screen.getByLabelText(/^ファイル名/);
+
+        // 空のまま押すと、保存（リンクの移動）を止めて入力欄へ戻す
+        expect(fireEvent.click(save)).toBe(false);
+        expect(name).toHaveAttribute("aria-invalid", "true");
+        expect(name).toHaveAccessibleDescription(/ファイル名を入力してください/);
+        expect(name).toHaveFocus();
+
+        await user.type(name, "旅行/京都");
+        expect(fireEvent.click(save)).toBe(false);
+        expect(name).toHaveAccessibleDescription(/「\/」はファイル名に使えません/);
+
+        // 直すそばから検査し直し、使える名前なら保存に進む
+        await user.clear(name);
+        await user.type(name, "旅行（京都）.mp4");
+        expect(name).not.toHaveAttribute("aria-invalid");
+        expect(save).toHaveAttribute("download", "旅行（京都）.mp4");
+        expect(fireEvent.click(save)).toBe(true);
     });
 
     it("生成の途中で Mac につながらなくなったら、原因と対処を並べて案内する", async () => {

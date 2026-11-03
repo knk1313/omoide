@@ -13,6 +13,7 @@ import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
+import { fileNamePlaceholder, fileNameProblem, MAX_FILE_NAME_LENGTH, stripExtension } from "@/lib/fileName";
 import { useJob } from "./preview/useJob";
 
 export default function PreviewPage() {
@@ -20,7 +21,10 @@ export default function PreviewPage() {
     const preview = useJob("preview");
     const output = useJob("export");
     const [frame, setFrame] = useState<Project["frame"]>(null);
-    const [fileName, setFileName] = useState(defaultFileName);
+    // 名前は空から入力してもらう（例は入力欄に薄く出す）。保存を押したときに検査し、誤りは入力欄の下に出す
+    const [fileName, setFileName] = useState("");
+    const [fileNameError, setFileNameError] = useState<string | null>(null);
+    const fileNameInput = useRef<HTMLInputElement>(null);
 
     // 開いたらプレビューの生成を頼む。採用と速度が前回と同じなら、サーバーは作り終えたジョブをそのまま返す
     const requested = useRef(false);
@@ -77,8 +81,25 @@ export default function PreviewPage() {
                                 </span>
                                 完成版ができました
                             </p>
-                            <FormField label="ファイル名" id="file-name" supportText="拡張子（.mp4）は自動で付きます。">
-                                <Input value={fileName} onChange={(e) => setFileName(e.target.value)} maxLength={80} enterKeyHint="done" />
+                            <FormField
+                                label="ファイル名"
+                                id="file-name"
+                                requirement="required"
+                                supportText={`拡張子（.mp4）は自動で付きます。${FORBIDDEN_HINT} は使えません。`}
+                                errorText={fileNameError ?? undefined}
+                            >
+                                <Input
+                                    ref={fileNameInput}
+                                    value={fileName}
+                                    placeholder={fileNamePlaceholder()}
+                                    onChange={(e) => {
+                                        setFileName(e.target.value);
+                                        // 誤りを出しているときは、直すそばから検査し直す
+                                        if (fileNameError) setFileNameError(fileNameProblem(e.target.value));
+                                    }}
+                                    maxLength={MAX_FILE_NAME_LENGTH}
+                                    enterKeyHint="done"
+                                />
                             </FormField>
                             <p className="m-0 text-text-muted">
                                 iPhone では「ファイル」アプリの「ダウンロード」に保存されます。写真に入れるときは、ファイルを開いて共有から「ビデオを保存」を選んでください。
@@ -94,12 +115,20 @@ export default function PreviewPage() {
 
             <BottomBar back={{ label: "速度を変える", onClick: () => navigate("/settings") }}>
                 {output.job?.status === "done" && output.job.url ? (
-                    // 添付ファイルとして返るので、スマホでは保存に進む。名前はサーバーで整える（空なら既定の名前）
+                    // 添付ファイルとして返るので、スマホでは保存に進む。使えない名前なら保存に進まず、入力欄の下に理由を出す
                     <ButtonAnchor
                         {...PRIMARY_ACTION}
                         leadIcon={Download}
-                        href={`${output.job.url}?name=${encodeURIComponent(fileName.trim())}`}
-                        download={`${fileName.trim() || defaultFileName()}.mp4`}
+                        href={`${output.job.url}?name=${encodeURIComponent(stripExtension(fileName))}`}
+                        download={`${stripExtension(fileName)}.mp4`}
+                        onClick={(e) => {
+                            const problem = fileNameProblem(fileName);
+                            setFileNameError(problem);
+                            if (problem) {
+                                e.preventDefault();
+                                fileNameInput.current?.focus();
+                            }
+                        }}
                     >
                         保存する
                     </ButtonAnchor>
@@ -113,12 +142,8 @@ export default function PreviewPage() {
     );
 }
 
-/** 保存するファイル名の初期値（例: omoide-20261103）。 */
-function defaultFileName(): string {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `omoide-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-}
+/** 補足に書く、ファイル名に使えない文字。 */
+const FORBIDDEN_HINT = '/ \\ : * ? " < > |';
 
 function Progress({ label, job }: { label: string; job: Job | null }) {
     return (
