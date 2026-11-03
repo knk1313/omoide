@@ -9,7 +9,6 @@ Setlogの書き出し動画を、スマホで選んで1本にまとめるツー�
 
 | 1. 動画 | 2. 選ぶ | 3. 速度 | 4. 確認 |
 | --- | --- | --- | --- |
-| 動画をアップロードし、撮影日を入れる | 使うクリップを選ぶ | 再生速度を選ぶ | プレビューを見て、完成版を保存する |
 | ![動画を取り込む画面](docs/screenshots/videos.png) | ![使うクリップを選ぶ画面](docs/screenshots/clips.png) | ![速度を選ぶ画面](docs/screenshots/settings.png) | ![プレビューを確認する画面](docs/screenshots/preview.png) |
 
 ## 動作環境
