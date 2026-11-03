@@ -20,7 +20,7 @@ CACHE_VERSION = 1
 def load_or_scan(info: VideoInfo, cache_dir: Path = CACHE_DIR) -> VideoScan:
     """キャッシュが使えればそれを返し、無ければ解析して保存する。"""
     path = _cache_path(info, cache_dir)
-    stamp = _stamp(info)
+    stamp = file_stamp(info)
     try:
         data = json.loads(path.read_text())
         if data["version"] == CACHE_VERSION and data["stamp"] == stamp:
@@ -37,14 +37,20 @@ def load_or_scan(info: VideoInfo, cache_dir: Path = CACHE_DIR) -> VideoScan:
     return scan
 
 
-def _cache_path(info: VideoInfo, cache_dir: Path) -> Path:
-    key = hashlib.sha256(str(info.path.resolve()).encode()).hexdigest()[:16]
-    return cache_dir / f"{info.path.stem}-{key}.json"
+def video_key(info: VideoInfo) -> str:
+    """動画ごとの生成物の名前。同じ名前の動画が別のフォルダにあっても衝突しない。"""
+    digest = hashlib.sha256(str(info.path.resolve()).encode()).hexdigest()[:16]
+    return f"{info.path.stem}-{digest}"
 
 
-def _stamp(info: VideoInfo) -> dict[str, int]:
+def file_stamp(info: VideoInfo) -> dict[str, int]:
+    """動画が変わったかを判定する値。中身を読まずに済むよう、サイズと更新日時を使う。"""
     stat = info.path.stat()
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
+
+
+def _cache_path(info: VideoInfo, cache_dir: Path) -> Path:
+    return cache_dir / f"{video_key(info)}.json"
 
 
 def _encode(scan: VideoScan) -> dict:
