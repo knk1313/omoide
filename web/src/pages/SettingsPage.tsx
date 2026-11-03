@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { Project, Speed } from "@/api/types";
-import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
-import Button from "@/components/Button";
-import Card from "@/components/Card";
-import { useToast } from "@/components/Toast";
+import { LoadFailure, Loading } from "@/components/app/PageStatus";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { RadioGroup } from "@/components/ui/RadioGroup";
+import { useToast } from "@/components/ui/Toast";
+import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatSeconds } from "@/lib/format";
 import { useSession } from "@/session/Session";
 
@@ -43,7 +47,7 @@ export default function SettingsPage() {
             setProject(await api.setSpeed(speed));
         } catch (error) {
             setProject(before);
-            if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
+            if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "保存できませんでした", type: "error" });
         }
     }
 
@@ -61,83 +65,97 @@ export default function SettingsPage() {
         }
     }
 
-    if (loadError) {
-        return (
-            <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 pb-[14vh] text-center">
-                <p className="text-sm text-muted">{loadError}</p>
-                <Button
-                    variant="secondary"
-                    className="h-12 px-8"
-                    onClick={() => {
+    return (
+        <div className="flex flex-1 flex-col gap-6">
+            <PageHeader title="速度を選ぶ" meta={project && <Summary project={project} />} />
+            {loadError ? (
+                <LoadFailure
+                    message={loadError}
+                    onRetry={() => {
                         setLoadError(null);
                         setAttempt((n) => n + 1);
                     }}
-                >
-                    もう一度読み込む
-                </Button>
-            </div>
-        );
-    }
-    if (!project) {
-        return <p className="pt-8 text-center text-sm text-muted">読み込んでいます…</p>;
-    }
+                />
+            ) : !project ? (
+                <Loading />
+            ) : (
+                <Settings
+                    project={project}
+                    starting={starting}
+                    startError={startError}
+                    onChooseSpeed={(speed) => void chooseSpeed(speed)}
+                    onStart={() => void startPreview()}
+                    onBack={() => navigate("/")}
+                />
+            )}
+        </div>
+    );
+}
 
+// 採用数とできあがりの長さ。ページ見出しの下に、名前と値の組で横に並べる
+function Summary({ project }: { project: Project }) {
+    const items = [
+        { term: "採用したクリップ", value: `${project.selected_count} 件` },
+        { term: "できあがりの長さ", value: `約 ${formatSeconds(project.estimated_seconds)}` },
+    ];
+    return (
+        <dl className="m-0 flex flex-wrap gap-x-6 gap-y-1">
+            {items.map((item) => (
+                <div key={item.term} className="flex gap-2">
+                    <dt>{item.term}</dt>
+                    <dd className="nums m-0 font-bold text-text-strong">{item.value}</dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
+type SettingsProps = {
+    project: Project;
+    starting: boolean;
+    startError: string | null;
+    onChooseSpeed: (speed: Speed) => void;
+    onStart: () => void;
+    onBack: () => void;
+};
+
+function Settings({ project, starting, startError, onChooseSpeed, onStart, onBack }: SettingsProps) {
     // 等速での長さ。選択肢ごとの長さはここから計算する
     const baseSeconds = project.estimated_seconds * project.speed;
     const nothingSelected = project.selected_count === 0;
 
     return (
-        <div className="flex flex-1 flex-col gap-5 pt-1">
-            <h1 className="text-xl font-semibold text-ink">速度を選ぶ</h1>
-
-            <Card className="flex divide-x divide-hairline">
-                <div className="flex flex-1 flex-col items-center gap-2 py-3.5">
-                    <span className="text-xs leading-none [text-box:trim-both_cap_alphabetic] text-muted">採用したクリップ</span>
-                    <span className="text-lg leading-none [text-box:trim-both_cap_alphabetic] font-semibold tabular-nums text-ink">{project.selected_count} 件</span>
-                </div>
-                <div className="flex flex-1 flex-col items-center gap-2 py-3.5">
-                    <span className="text-xs leading-none [text-box:trim-both_cap_alphabetic] text-muted">できあがりの長さ</span>
-                    <span className="text-lg leading-none [text-box:trim-both_cap_alphabetic] font-semibold tabular-nums text-ink">約 {formatSeconds(project.estimated_seconds)}</span>
-                </div>
-            </Card>
-
-            <fieldset className="flex flex-col gap-2">
-                <legend className="pb-2 text-sm font-medium text-ink">全体の再生速度</legend>
-                <div role="radiogroup" aria-label="全体の再生速度" className="grid grid-cols-4 gap-2">
-                    {SPEEDS.map((speed) => {
-                        const checked = speed === project.speed;
-                        return (
-                            <button
-                                key={speed}
-                                type="button"
-                                role="radio"
-                                aria-checked={checked}
-                                onClick={() => void chooseSpeed(speed)}
-                                className={`flex h-16 flex-col items-center justify-center gap-1.5 rounded-control border text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                                    checked ? "border-brand bg-nav-active text-nav-ink" : "border-control-border bg-surface hover:bg-surface-2"
-                                }`}
-                            >
-                                <span className="text-base leading-none [text-box:trim-both_cap_alphabetic] font-semibold tabular-nums">{speed}x</span>
-                                <span className={`text-xs leading-none [text-box:trim-both_cap_alphabetic] tabular-nums ${checked ? "text-nav-ink" : "text-muted"}`}>
-                                    {formatSeconds(baseSeconds / speed)}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </fieldset>
+        <>
+            <FormField label="全体の再生速度" as="fieldset" supportText="かっこ内は、その速度にしたときの長さです。">
+                <RadioGroup
+                    name="speed"
+                    size="md"
+                    value={String(project.speed)}
+                    onChange={(value) => onChooseSpeed(Number(value) as Speed)}
+                    options={SPEEDS.map((speed) => ({
+                        value: String(speed),
+                        label: (
+                            <span className="nums">
+                                {speed}x<span className="text-text-muted">（{formatSeconds(baseSeconds / speed)}）</span>
+                            </span>
+                        ),
+                    }))}
+                />
+            </FormField>
 
             {(startError || nothingSelected) && (
-                <p role="alert" className="text-sm text-danger">
-                    {startError ?? "クリップが 1 件も選ばれていません。クリップ選択に戻って選んでください。"}
-                </p>
+                <NotificationBanner
+                    type="error"
+                    live="assertive"
+                    title={startError ?? "クリップが 1 件も選ばれていません。クリップ選択に戻って選んでください。"}
+                />
             )}
 
-            <BottomBar back={{ label: "クリップ選択", onClick: () => navigate("/") }}>
-                <Button className={PRIMARY_ACTION} disabled={starting || nothingSelected} onClick={() => void startPreview()}>
+            <BottomBar back={{ label: "クリップ選択", onClick: onBack }}>
+                <Button {...PRIMARY_ACTION} loading={starting} disabled={nothingSelected} onClick={onStart}>
                     {starting ? "生成を始めています…" : "プレビューを生成"}
                 </Button>
             </BottomBar>
-        </div>
+        </>
     );
 }

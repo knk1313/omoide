@@ -7,7 +7,7 @@ import { currentStep, renderApp } from "@/test/renderApp";
 async function openSettings(routes: Parameters<typeof fakeServer>[0] = {}) {
     const server = fakeServer({ ...loggedIn, ...routes });
     const app = renderApp("/settings");
-    await screen.findByRole("radiogroup", { name: "全体の再生速度" });
+    await screen.findByRole("group", { name: "全体の再生速度" });
     return { server, ...app };
 }
 
@@ -19,15 +19,15 @@ describe("出力設定画面", () => {
         await openSettings();
         expect(screen.getByText("採用したクリップ").parentElement).toHaveTextContent("2 件");
         expect(summary()).toHaveTextContent("約 4秒");
-        expect(radio(/^1x/)).toHaveAttribute("aria-checked", "true");
+        expect(radio(/^1x/)).toBeChecked();
     });
 
     it("選択肢ごとに、その速度にしたときの長さを示す", async () => {
         await openSettings();
-        expect(radio(/^0.5x/)).toHaveTextContent("8秒");
-        expect(radio(/^1x/)).toHaveTextContent("4秒");
-        expect(radio(/^1.5x/)).toHaveTextContent("3秒");
-        expect(radio(/^2x/)).toHaveTextContent("2秒");
+        expect(radio(/^0.5x/)).toHaveAccessibleName(/8秒/);
+        expect(radio(/^1x/)).toHaveAccessibleName(/4秒/);
+        expect(radio(/^1.5x/)).toHaveAccessibleName(/3秒/);
+        expect(radio(/^2x/)).toHaveAccessibleName(/2秒/);
     });
 
     it("速度を選ぶと保存し、長さを更新する", async () => {
@@ -35,8 +35,8 @@ describe("出力設定画面", () => {
         const { server, user } = await openSettings({ "PATCH /api/settings": { status: 200, body: saved } });
         await user.click(radio(/^2x/));
 
-        expect(radio(/^2x/)).toHaveAttribute("aria-checked", "true");
-        expect(radio(/^1x/)).toHaveAttribute("aria-checked", "false");
+        expect(radio(/^2x/)).toBeChecked();
+        expect(radio(/^1x/)).not.toBeChecked();
         expect(summary()).toHaveTextContent("約 2秒");
         expect(server.calls.at(-1)).toEqual({ method: "PATCH", path: "/api/settings", body: { speed: 2 } });
     });
@@ -45,7 +45,7 @@ describe("出力設定画面", () => {
         const { user } = await openSettings({ "PATCH /api/settings": { status: 500, body: { detail: "保存できませんでした" } } });
         await user.click(radio(/^0.5x/));
         expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした");
-        expect(radio(/^1x/)).toHaveAttribute("aria-checked", "true");
+        expect(radio(/^1x/)).toBeChecked();
         expect(summary()).toHaveTextContent("約 4秒");
     });
 
