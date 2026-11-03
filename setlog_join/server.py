@@ -1,16 +1,19 @@
 """スマホから操作するためのローカルサーバー。ビルド済みの UI と API を配信する。"""
 
 from pathlib import Path
+from urllib.parse import unquote
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import ClientDisconnect
 from starlette.types import Scope
 
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
-from .jobs import InsufficientSpace, JobManager, JobsBusy, NothingSelected
+from .jobs import Analyzer, InsufficientSpace, JobManager, JobsBusy, NothingSelected, analyze_video
+from .uploads import UploadError, save_upload, upload_path
 from .workspace import PanelEntry, Workspace
 
 WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -56,12 +59,18 @@ class BulkSelectionRequest(BaseModel):
     only: bool = False
 
 
+class VideoDateRequest(BaseModel):
+    # `2026-09-19` の形。null なら入力を消し、メタデータの日付に戻す
+    date: str | None
+
+
 class SettingsRequest(BaseModel):
     speed: float
 
 
 def create_app(
     workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST, jobs: JobManager | None = None,
+    upload_dir: Path = Path("input"), analyze: Analyzer = analyze_video,
 ) -> FastAPI:
     jobs = jobs or JobManager(workspace)
     # API の仕様書の画面は使わないので公開しない
@@ -144,6 +153,30 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         return workspace.summary()
+
+    @app.post("/api/videos", status_code=202)
+    async def upload_video(request: Request) -> dict:
+        # 元のファイル名は、日本語などを含められるよう URL エンコードして X-File-Name で受け取る
+        raw_name = unquote(request.headers.get("x-file-name", ""))
+        length = request.headers.get("content-length")
+        try:
+            destination = upload_path(raw_name, upload_dir)
+            await save_upload(request.stream(), int(length) if length and length.isdigit() else None, destination)
+        except UploadError as e:
+            raise HTTPException(status_code=e.status, detail=str(e)) from e
+        except ClientDisconnect:
+            raise HTTPException(status_code=400, detail="送っている途中で接続が切れました。もう一度お試しください") from None
+        return jobs.start_analysis(destination, analyze).to_json()
+
+    @app.patch("/api/videos/{name}")
+    def update_video(name: str, body: VideoDateRequest) -> dict:
+        try:
+            workspace.set_video_date(name, body.date)
+            return workspace.video_json(workspace.find_video(name))
+        except KeyError:
+            raise HTTPException(status_code=404, detail="動画がありません") from None
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
 
     @app.post("/api/preview", status_code=202)
     def start_preview() -> dict:

@@ -151,18 +151,23 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     if password is None:
         return _fail("パスワードが設定されなかったため、終了します。")
 
-    videos = _load_videos(folder)
-    if videos is None:
+    if not _tools_available():
         return 1
+    # スマホから動画を取り込めるので、入力フォルダが空でも起動する
+    folder.mkdir(parents=True, exist_ok=True)
     scans = []
-    for info in videos:
+    for info in find_videos(folder):
         try:
             scan = load_or_scan(info)
         except ValueError as e:
-            return _fail(f"{info.path.name}: {e}")
+            # 1 本読めなくても、ほかの動画で使えるようにする
+            print(f"{info.path.name} は読み飛ばします: {e}", file=sys.stderr)
+            continue
         ensure_thumbnails(scan)
         scans.append(scan)
     panels = sum(s.candidate_count for s in scans)
+    if not scans:
+        print("動画はまだありません。スマホの画面からアップロードできます。")
     print(f"動画 {len(scans)} 本 / 中身のあるパネル {panels} 件を読み込みました。")
 
     problem = build_problem()
@@ -178,7 +183,8 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     # uvicorn が動き出すと戻らないので、案内を先に出し切る
     print("同じ Wi-Fi に接続したスマホで QR コードを読み取ってください。終了するには Ctrl+C を押してください。", flush=True)
 
-    app = create_app(Workspace(scans), auth)
+    # スマホから取り込んだ動画も、入力フォルダに置く（次に起動したときも読み込まれる）
+    app = create_app(Workspace(scans), auth, upload_dir=folder)
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
     expiry = threading.Timer(lifetime, lambda: setattr(server, "should_exit", True))
     expiry.daemon = True
@@ -225,12 +231,18 @@ def _print_qr(url: str) -> None:
     qr.print_ascii(tty=sys.stdout.isatty())
 
 
-def _load_videos(folder: Path) -> list[VideoInfo] | None:
-    """入力を確かめて動画の一覧を返す。使えないときはエラーを表示して None を返す。"""
+def _tools_available() -> bool:
     for tool in ("ffmpeg", "ffprobe"):
         if shutil.which(tool) is None:
             _fail(f"{tool} が見つかりません。`brew install ffmpeg` でインストールしてください。")
-            return None
+            return False
+    return True
+
+
+def _load_videos(folder: Path) -> list[VideoInfo] | None:
+    """入力を確かめて動画の一覧を返す。使えないときはエラーを表示して None を返す。"""
+    if not _tools_available():
+        return None
     if not folder.is_dir():
         _fail(f"入力フォルダがありません: {folder}")
         return None

@@ -16,7 +16,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from .cache import load_or_scan
 from .join import FULL_QUALITY, PREVIEW_QUALITY, Segment, SelectionError, join_segments
+from .probe import probe
+from .scan import VideoScan
 from .workspace import Workspace
 
 PREVIEW_DIR = Path(".setlog-join/previews")
@@ -46,15 +49,40 @@ class JobsBusy(JobError):
     pass
 
 
+class AnalysisError(Exception):
+    """取り込んだ動画を読み取れない。メッセージは利用者向け。"""
+
+
+Analyzer = Callable[[Path], VideoScan]
+
+
+def analyze_video(path: Path) -> VideoScan:
+    """取り込んだ動画を解析する。Setlog の書き出し動画でなければ AnalysisError。"""
+    try:
+        info = probe(path)
+    except Exception as e:
+        raise AnalysisError("動画として読み取れませんでした。MP4 か MOV の動画を選んでください") from e
+    try:
+        scan = load_or_scan(info)
+    except ValueError as e:
+        # 3 段のカードが見つからない
+        raise AnalysisError(
+            "Setlog の書き出し動画として読み取れませんでした。Setlog から書き出した動画を選んでください"
+        ) from e
+    return scan
+
+
 @dataclass
 class Job:
     id: str
-    kind: str  # "preview" か "export"
+    kind: str  # "preview"・"export"・"analyze"（取り込んだ動画の解析）
     signature: str
     path: Path
     status: str = "queued"  # queued / running / done / failed
     progress: float = 0.0
     error: str | None = None
+    # 解析を終えた動画の情報（動画名・メタデータの撮影日など）。画面で日付の入力の初期値に使う
+    result: dict | None = None
 
     @property
     def active(self) -> bool:
@@ -66,7 +94,7 @@ class Job:
             url = f"/media/preview?v={self.id}" if self.kind == "preview" else "/download/output"
         return {
             "id": self.id, "kind": self.kind, "status": self.status,
-            "progress": round(self.progress, 3), "error": self.error, "url": url,
+            "progress": round(self.progress, 3), "error": self.error, "url": url, "result": self.result,
         }
 
 
@@ -126,6 +154,33 @@ class JobManager:
             self._jobs[job.id] = job
         self._executor.submit(self._run, job, segments, speed)
         return job
+
+    def start_analysis(self, path: Path, analyze: "Analyzer") -> Job:
+        """取り込んだ動画を解析し、終わったら選べるパネルに加える。読み取れなければ動画を消して理由を返す。"""
+        job = Job(id=secrets.token_urlsafe(8), kind="analyze", signature=str(path), path=path)
+        with self._lock:
+            self._jobs[job.id] = job
+        self._executor.submit(self._analyze, job, analyze)
+        return job
+
+    def _analyze(self, job: Job, analyze: "Analyzer") -> None:
+        job.status = "running"
+        try:
+            scan = analyze(job.path)
+            # サムネイルは、配信する Workspace と同じ場所に作る。失敗しても進行中のまま残らないよう、ここで受け止める
+            self._workspace.ensure_thumbnails(scan)
+        except AnalysisError as e:
+            job.path.unlink(missing_ok=True)
+            job.status, job.error = "failed", str(e)
+            return
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            job.path.unlink(missing_ok=True)
+            job.status, job.error = "failed", "動画を読み取れませんでした。もう一度お試しください"
+            return
+        self._workspace.add_scan(scan)
+        job.result = self._workspace.video_json(scan)
+        job.progress, job.status = 1.0, "done"
 
     def get(self, job_id: str) -> Job:
         """存在しない ID なら KeyError。"""

@@ -1,6 +1,7 @@
 import tempfile
 import time
 import unittest
+from urllib.parse import quote
 from pathlib import Path
 from unittest import mock
 
@@ -171,7 +172,7 @@ class ClipsApiTest(ServerTestCase):
         self.assertEqual(body["speed"], 1.0)
         self.assertEqual((body["total_count"], body["selected_count"]), (3, 3))
         self.assertAlmostEqual(body["estimated_seconds"], 6.0)
-        self.assertEqual(body["videos"], [{"name": "setlog", "created_at": None, "panel_count": 3}])
+        self.assertEqual(body["videos"], [{"name": "setlog", "created_at": None, "metadata_date": None, "date": None, "panel_count": 3}])
         self.assertEqual(body["frame"], {"width": 640, "height": 360})
         self.client.post("/api/clips/select-all", json={"selected": False})
         self.assertIsNone(self.client.get("/api/project").json()["frame"])
@@ -310,6 +311,97 @@ class JobsApiTest(ServerTestCase):
         self.wait(self.client.post("/api/preview").json())
         self.assertEqual(self.client.delete("/api/temporary").status_code, 200)
         self.assertEqual(self.client.get("/media/preview").status_code, 404)
+
+
+class VideosApiTest(ServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.upload_dir = self.data_dir / "input"
+        self.analyzed = []
+
+        def analyze(path):
+            if path.read_bytes() == b"broken":
+                from setlog_join.jobs import AnalysisError
+                raise AnalysisError("Setlog の書き出し動画として読み取れませんでした")
+            self.analyzed.append(path)
+            scan = _scan(path)
+            return scan
+
+        # 偽の動画なので、サムネイルは作らない
+        patcher = mock.patch.object(Workspace, "ensure_thumbnails")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.jobs = JobManager(self.workspace, self.data_dir / "previews", self.data_dir / "output",
+                               free_bytes=lambda path: 10**12)
+        self.addCleanup(self.jobs.shutdown)
+        self.client = TestClient(
+            create_app(self.workspace, self.auth, self.web_dir, self.jobs, upload_dir=self.upload_dir, analyze=analyze),
+            follow_redirects=False,
+        )
+        self.login()
+
+    def upload(self, name: str, data: bytes):
+        return self.client.post("/api/videos", content=data, headers={"X-File-Name": quote(name)})
+
+    def wait(self, job: dict) -> dict:
+        for _ in range(500):
+            if job["status"] not in ("queued", "running"):
+                return job
+            time.sleep(0.01)
+            job = self.client.get(f"/api/jobs/{job['id']}").json()
+        self.fail("job did not finish")
+
+    def test_upload_adds_the_video_after_analysis(self):
+        response = self.upload("9月の旅行.mov", b"video bytes")
+        self.assertEqual(response.status_code, 202)
+        job = self.wait(response.json())
+        self.assertEqual(job["status"], "done")
+        self.assertEqual(job["result"]["name"], "9月の旅行")
+        self.assertEqual((self.upload_dir / "9月の旅行.mov").read_bytes(), b"video bytes")
+        names = [v["name"] for v in self.client.get("/api/project").json()["videos"]]
+        self.assertIn("9月の旅行", names)
+        self.assertEqual(len(self.client.get("/api/clips").json()), 6)
+
+    def test_failed_analysis_removes_the_file_and_explains(self):
+        job = self.wait(self.upload("broken.mp4", b"broken").json())
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("Setlog の書き出し動画", job["error"])
+        self.assertFalse((self.upload_dir / "broken.mp4").exists())
+
+    def test_thumbnail_failure_does_not_leave_the_job_running(self):
+        with mock.patch.object(Workspace, "ensure_thumbnails", side_effect=RuntimeError("ffmpeg failed")):
+            job = self.wait(self.upload("trip.mp4", b"video").json())
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("もう一度", job["error"])
+        self.assertFalse((self.upload_dir / "trip.mp4").exists())
+
+    def test_rejects_other_files(self):
+        response = self.upload("photo.jpg", b"x")
+        self.assertEqual(response.status_code, 415)
+        self.assertIn("MP4 か MOV", response.json()["detail"])
+
+    def test_upload_requires_login(self):
+        self.client.post("/api/session/logout")
+        self.assertEqual(self.upload("a.mp4", b"x").status_code, 401)
+
+    def test_sets_and_clears_the_video_date(self):
+        response = self.client.patch("/api/videos/setlog", json={"date": "2026-09-19"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["date"], "2026-09-19")
+        self.assertEqual(self.client.get("/api/project").json()["videos"][0]["date"], "2026-09-19")
+        self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": None}).json()["date"], None)
+
+    def test_rejects_bad_dates_and_unknown_videos(self):
+        self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": "2026-02-30"}).status_code, 422)
+        self.assertEqual(self.client.patch("/api/videos/nope", json={"date": "2026-09-19"}).status_code, 404)
+
+    def test_videos_are_ordered_by_the_entered_date(self):
+        self.wait(self.upload("later.mp4", b"v").json())
+        self.client.patch("/api/videos/later", json={"date": "2026-01-01"})
+        self.client.patch("/api/videos/setlog", json={"date": "2026-12-31"})
+        names = [v["name"] for v in self.client.get("/api/project").json()["videos"]]
+        self.assertEqual(names, ["later", "setlog"])
+        self.assertEqual(self.client.get("/api/clips").json()[0]["video"], "later")
 
 
 class MediaAuthTest(ServerTestCase):
