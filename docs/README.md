@@ -13,6 +13,7 @@
 | [video.md](video.md) | FFmpegで動画を扱うときの注意点 |
 | [security.md](security.md) | ローカルサーバーの認証とセッションの方針 |
 | [api.md](api.md) | サーバーのAPIの一覧 |
+| [errors.md](errors.md) | エラー処理の方針 |
 | [mobile-ui.md](mobile-ui.md) | スマホ向けUIと動画再生の方針 |
 
 ## 書き方の方針
