@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import type { PanelClip, Project } from "@/api/types";
 
 type Reply = { status: number; body?: unknown } | Error;
 type Handler = Reply | ((body: unknown) => Reply);
@@ -25,5 +26,32 @@ export function fakeServer(routes: Record<string, Handler>) {
     return { calls };
 }
 
-export const loggedIn = { "GET /api/health": { status: 200, body: { status: "ok" } } };
+function panel(video: string, clip: number, panel: number, selected = true): PanelClip {
+    const id = `${video}/${String(clip).padStart(3, "0")}-${panel}`;
+    return {
+        id, video, clip, panel, label: ["上", "中", "下"][panel - 1], start: (clip - 1) * 2, duration: 2, selected,
+        thumbnail_url: `/media/thumbnails/${id}`, video_url: `/media/clips/${id}`,
+    };
+}
+
+/** 2 本の動画から 3 件のパネル。sep の 2 件目だけ除外している。 */
+export const sampleClips: PanelClip[] = [panel("sep", 1, 2), panel("sep", 2, 3, false), panel("oct", 1, 1)];
+
+export const sampleProject: Project = {
+    speed: 1,
+    total_count: 3,
+    selected_count: 2,
+    estimated_seconds: 4,
+    videos: [
+        { name: "sep", created_at: "2026-09-19T05:21:54+00:00", panel_count: 2 },
+        { name: "oct", created_at: null, panel_count: 1 },
+    ],
+};
+
+/** ログイン済みで、sampleProject と sampleClips を返すサーバー。 */
+export const loggedIn = {
+    "GET /api/health": { status: 200, body: { status: "ok" } },
+    "GET /api/project": { status: 200, body: sampleProject },
+    "GET /api/clips": { status: 200, body: sampleClips },
+};
 export const notLoggedIn = { "GET /api/health": { status: 401, body: { detail: "ログインしてください" } } };

@@ -25,7 +25,7 @@ describe("パスワード画面", () => {
     });
 
     it("Enter でも送信できる", async () => {
-        fakeServer({ ...notLoggedIn, "POST /api/session/login": { status: 200 } });
+        fakeServer({ ...loggedIn, ...notLoggedIn, "POST /api/session/login": { status: 200 } });
         const { user } = renderApp("/login");
         await user.type(await screen.findByLabelText(PASSWORD_FIELD.name), "correct horse{Enter}");
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();

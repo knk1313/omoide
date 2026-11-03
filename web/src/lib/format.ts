@@ -1,23 +1,17 @@
-export type DateDisplay = { locale: string; timeZone: string };
+// 画面に出す日付と時間の書き方。日付は端末のタイムゾーンで表示する。
 
-// Intl.DateTimeFormat の生成は重いので、ロケールとタイムゾーンの組ごとに使い回す。
-const formatters = new Map<string, Intl.DateTimeFormat>();
+const dateFormatter = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
 
-// ISO 8601 文字列を、指定したロケール・タイムゾーンの日時で表示する（例: ja-JP なら「2026/10/24 18:30」）。
-// 画面からは useDisplaySettings().formatDateTime を使う。
-export function formatDateTime(iso: string, { locale, timeZone }: DateDisplay): string {
-    const key = `${locale}|${timeZone}`;
-    let formatter = formatters.get(key);
-    if (!formatter) {
-        formatter = new Intl.DateTimeFormat(locale, {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone,
-        });
-        formatters.set(key, formatter);
-    }
-    return formatter.format(new Date(iso));
+/** ISO 8601 の日時を「2026年9月19日(土)」の形にする。 */
+export function formatDate(iso: string): string {
+    return dateFormatter.format(new Date(iso));
+}
+
+/** 秒を「46秒」「1分23秒」の形にする。 */
+export function formatSeconds(seconds: number): string {
+    const total = Math.round(seconds);
+    const minutes = Math.floor(total / 60);
+    const rest = total % 60;
+    if (minutes === 0) return `${rest}秒`;
+    return rest === 0 ? `${minutes}分` : `${minutes}分${rest}秒`;
 }

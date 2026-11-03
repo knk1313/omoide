@@ -34,7 +34,8 @@ export default function Modal({ onClose, label = "ダイアログ", children }: 
                 type="button"
                 onClick={onClose}
                 aria-label="閉じる"
-                className="absolute right-4 top-4 z-10 text-on-dark/80 transition-colors hover:text-on-dark"
+                // 指で押せる 44px 四方にし、iPhone のノッチやステータスバーに重ならない位置に置く
+                className="absolute right-2 top-[max(env(safe-area-inset-top),0.5rem)] z-10 flex h-11 w-11 items-center justify-center rounded-full text-on-dark/80 transition-colors hover:text-on-dark"
             >
                 <X className="h-6 w-6" />
             </button>
