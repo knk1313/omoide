@@ -183,6 +183,9 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     expiry.start()
     try:
         server.run()
+    except KeyboardInterrupt:
+        # uvicorn は Ctrl+C で止まった後に KeyboardInterrupt を送出し直す。利用者の通常の終了なので、そのまま終える
+        pass
     finally:
         expiry.cancel()
         auth.end()
