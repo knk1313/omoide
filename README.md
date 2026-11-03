@@ -55,4 +55,4 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s tests
 ```
 
-`web/` は [workspace-ui-template](https://github.com/knk1313/workspace-ui-template) をもとにしている。開発方法は [web/README.md](web/README.md) を参照。
+`web/` の UI は、デジタル庁デザインシステム（DADS）に準拠したテンプレート [workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)（コミット `feff468`）に基づく。開発方法は [web/README.md](web/README.md) を参照。
