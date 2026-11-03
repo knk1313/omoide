@@ -87,6 +87,24 @@ class Workspace:
             others = [s for s in self.scans if s.info.path.stem != scan.info.path.stem]
             self._arrange([*others, scan])
 
+    def remove_video(self, name: str) -> None:
+        """取り込んだ動画を消す。元の動画ファイル・サムネイル・パネル単体の動画と、その動画の除外と撮影日の記録も消す。
+
+        存在しない動画名なら KeyError。
+        """
+        with self._project_lock:
+            scan = self.find_video(name)
+            self._arrange([s for s in self.scans if s is not scan])
+            self.project.excluded = {ref for ref in self.project.excluded if not ref.startswith(f"{name}/")}
+            self.project.video_dates.pop(name, None)
+            save_project(self.project, self._project_path)
+        key = video_key(scan.info)
+        shutil.rmtree(self._thumbnail_dir / key, ignore_errors=True)
+        with self._media_lock:
+            for folder in self._clip_dir.glob(f"{key}-*"):
+                shutil.rmtree(folder, ignore_errors=True)
+        scan.info.path.unlink(missing_ok=True)
+
     def find_video(self, name: str) -> VideoScan:
         """存在しない動画名なら KeyError。"""
         for scan in self.scans:

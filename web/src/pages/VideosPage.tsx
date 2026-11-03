@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Film, Upload } from "lucide-react";
+import { Film, Trash2, Upload } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api, ApiError, uploadVideo } from "@/api/client";
 import type { Job, Project, Video } from "@/api/types";
 import { LoadFailure, Loading } from "@/components/app/PageStatus";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FormField } from "@/components/ui/FormField";
+import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -29,6 +31,7 @@ type Upload =
 export default function VideosPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { confirm } = useConfirm();
     const { handleError } = useSession();
     const [project, setProject] = useState<Project | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -113,6 +116,23 @@ export default function VideosPage() {
         }
     }
 
+    // 取り込んだ動画を消す。元に戻せないので、何が消えるかを示して確かめてから消す
+    async function deleteVideo(video: Video) {
+        const ok = await confirm({
+            title: `「${video.name}」を消しますか`,
+            message: "Mac から、動画のファイルと、そこから切り出したクリップ・サムネイル、選んだ内容と撮影日を消します。元に戻せません。",
+            confirmLabel: "消す",
+            tone: "error",
+        });
+        if (!ok) return;
+        try {
+            setProject(await api.deleteVideo(video.name));
+            toast({ title: `「${video.name}」を消しました`, type: "success" });
+        } catch (error) {
+            if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "消せませんでした。もう一度お試しください", type: "error" });
+        }
+    }
+
     const header = <PageHeader title="動画を取り込む" description="Setlog から書き出した動画を選び、撮影した日を入力してください。" />;
 
     if (loadError || !project) {
@@ -178,7 +198,14 @@ export default function VideosPage() {
                 ) : (
                     <ul className="m-0 flex list-none flex-col gap-2 p-0">
                         {project.videos.map((video) => (
-                            <VideoRow key={video.name} video={video} videos={project.videos} disabled={busy} onSave={(date) => saveDate(video, date)} />
+                            <VideoRow
+                                key={video.name}
+                                video={video}
+                                videos={project.videos}
+                                disabled={busy}
+                                onSave={(date) => saveDate(video, date)}
+                                onDelete={() => void deleteVideo(video)}
+                            />
                         ))}
                     </ul>
                 )}
@@ -306,11 +333,13 @@ function VideoRow({
     videos,
     disabled,
     onSave,
+    onDelete,
 }: {
     video: Video;
     videos: readonly Video[];
     disabled: boolean;
     onSave: (date: string) => Promise<SaveResult>;
+    onDelete: () => void;
 }) {
     const inputId = `video-date-${video.name}`;
     const errorId = `${inputId}-error`;
@@ -331,12 +360,16 @@ function VideoRow({
     return (
         <Card as="li" padding="sm">
             <CardBody className="flex flex-col gap-2">
-                <div className="flex min-w-0 flex-col">
-                    <span className="truncate font-bold text-text-strong">{video.name}</span>
-                    <span className="text-text-muted">
-                        パネル <span className="nums">{video.panel_count}</span> 件
-                        {video.date ? "" : <span className="font-bold text-warning">・撮影日が未入力</span>}
-                    </span>
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-bold text-text-strong">{video.name}</span>
+                        <span className="text-text-muted">
+                            パネル <span className="nums">{video.panel_count}</span> 件
+                            {video.date ? "" : <span className="font-bold text-warning">・撮影日が未入力</span>}
+                        </span>
+                    </div>
+                    {/* 送っている・読み取っている間は消さない（取り込みの結果と食い違うため） */}
+                    <IconButton icon={Trash2} label={`${video.name}を消す`} tone="error" className="-mt-2 -mr-2" disabled={disabled} onClick={onDelete} />
                 </div>
                 <label htmlFor={inputId} className="sr-only">
                     {video.name}の撮影日

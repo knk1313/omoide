@@ -16,6 +16,7 @@ from setlog_join.probe import VideoInfo
 from setlog_join.scan import ScannedClip, VideoScan
 from setlog_join.segments import Clip
 from setlog_join.server import GATE_COOKIE, SESSION_COOKIE, create_app
+from setlog_join.cache import video_key
 from setlog_join.workspace import Workspace
 
 PASSWORD = "correct horse"
@@ -419,6 +420,37 @@ class VideosApiTest(ServerTestCase):
         self.assertIn("「setlog」として取り込み済み", job["error"])
         self.assertFalse((self.upload_dir / "copy.mov").exists())
         self.assertEqual([v["name"] for v in self.client.get("/api/project").json()["videos"]], ["setlog"])
+
+    def test_deletes_a_video_with_its_file_panels_and_records(self):
+        self.wait(self.upload("later.mp4", b"another video").json())
+        self.client.patch("/api/videos/setlog", json={"date": "2026-09-19"})
+        self.client.patch("/api/clips/setlog/001-3", json={"selected": False})
+        thumbnails = self.data_dir / "thumbnails" / video_key(self.workspace.find_video("setlog").info)
+        thumbnails.mkdir(parents=True)
+
+        response = self.client.delete("/api/videos/setlog")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([v["name"] for v in response.json()["videos"]], ["later"])
+        self.assertFalse((self.data_dir / "setlog.mov").exists())
+        self.assertFalse(thumbnails.exists())
+        self.assertTrue(all(c["video"] == "later" for c in self.client.get("/api/clips").json()))
+        # 消した動画の除外と撮影日の記録は残さない
+        saved = (self.data_dir / "project.json").read_text()
+        self.assertNotIn("setlog", saved)
+        self.assertEqual(self.client.delete("/api/videos/setlog").status_code, 404)
+
+    def test_cannot_delete_while_generating(self):
+        with mock.patch.object(JobManager, "generating", return_value=True):
+            response = self.client.delete("/api/videos/setlog")
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("作り終えてから", response.json()["detail"])
+        self.assertTrue((self.data_dir / "setlog.mov").exists())
+
+    def test_delete_requires_login(self):
+        self.client.cookies.clear()
+        self.open_share()
+        self.assertEqual(self.client.delete("/api/videos/setlog").status_code, 401)
+        self.assertTrue((self.data_dir / "setlog.mov").exists())
 
     def test_videos_are_ordered_by_the_entered_date(self):
         self.wait(self.upload("later.mp4", b"v").json())

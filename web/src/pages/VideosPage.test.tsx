@@ -211,6 +211,40 @@ describe("動画を取り込む画面", () => {
         expect(server.calls.some((c) => c.method === "PATCH")).toBe(false);
     });
 
+    it("確かめてから動画を消し、一覧を新しくする", async () => {
+        const remaining: Project = { ...sampleProject, videos: [sampleProject.videos[1]], total_count: 1, selected_count: 1 };
+        const { server, user } = await openVideos({ "DELETE /api/videos/sep": { status: 200, body: remaining } });
+        await user.click(screen.getByRole("button", { name: "sepを消す" }));
+
+        const dialog = screen.getByRole("dialog", { name: "「sep」を消しますか" });
+        expect(dialog).toHaveTextContent("元に戻せません");
+        await user.click(within(dialog).getByRole("button", { name: "消す" }));
+
+        await waitFor(() => expect(screen.queryByLabelText("sepの撮影日")).not.toBeInTheDocument());
+        expect(screen.getByLabelText("octの撮影日")).toBeInTheDocument();
+        expect(server.calls).toContainEqual({ method: "DELETE", path: "/api/videos/sep", body: undefined });
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("「sep」を消しました"));
+    });
+
+    it("確認でキャンセルしたら消さない", async () => {
+        const { server, user } = await openVideos();
+        await user.click(screen.getByRole("button", { name: "sepを消す" }));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "キャンセル" }));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(server.calls.some((c) => c.method === "DELETE")).toBe(false);
+        expect(screen.getByLabelText("sepの撮影日")).toBeInTheDocument();
+    });
+
+    it("生成中などで消せなければ、サーバーの理由を知らせて一覧はそのまま", async () => {
+        const { user } = await openVideos({
+            "DELETE /api/videos/sep": { status: 409, body: { detail: "プレビューか完成版を作っている間は消せません。作り終えてから、もう一度お試しください" } },
+        });
+        await user.click(screen.getByRole("button", { name: "sepを消す" }));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "消す" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("作り終えてから");
+        expect(screen.getByLabelText("sepの撮影日")).toBeInTheDocument();
+    });
+
     it("一覧の日付欄は、どの動画でも名前の下の行に置く", async () => {
         await openVideos();
         for (const name of ["sep", "oct"]) {

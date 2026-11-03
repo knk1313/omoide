@@ -188,6 +188,11 @@ class JobManager:
         job.result = self._workspace.video_json(scan)
         job.progress, job.status = 1.0, "done"
 
+    def generating(self) -> bool:
+        """プレビューか完成版を作っている途中か。"""
+        with self._lock:
+            return any(job.kind in ("preview", "export") and job.active for job in self._jobs.values())
+
     def get(self, job_id: str) -> Job:
         """存在しない ID なら KeyError。"""
         return self._jobs[job_id]

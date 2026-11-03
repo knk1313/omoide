@@ -188,6 +188,17 @@ def create_app(
             raise HTTPException(status_code=400, detail="送っている途中で接続が切れました。もう一度お試しください") from None
         return jobs.start_analysis(destination, analyze).to_json()
 
+    @app.delete("/api/videos/{name}")
+    def delete_video(name: str) -> dict:
+        # 作っている途中の動画が、消した動画のパネルを読みに行かないようにする
+        if jobs.generating():
+            raise HTTPException(status_code=409, detail="プレビューか完成版を作っている間は消せません。作り終えてから、もう一度お試しください")
+        try:
+            workspace.remove_video(name)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="動画がありません") from None
+        return workspace.summary()
+
     @app.patch("/api/videos/{name}")
     def update_video(name: str, body: VideoDateRequest) -> dict:
         try:

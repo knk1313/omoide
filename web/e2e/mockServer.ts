@@ -138,6 +138,13 @@ export async function mockServer(page: Page, options: MockOptions = {}) {
             clips = clips.map((c) => (c.id === id ? { ...c, selected: (body as { selected: boolean }).selected } : c));
             return json(route, 200, clips.find((c) => c.id === id));
         }
+        if (method === "DELETE" && path.startsWith("/api/videos/")) {
+            const name = decodeURIComponent(path.slice("/api/videos/".length));
+            if (!videos.some((v) => v.name === name)) return json(route, 404, { detail: "動画がありません" });
+            videos = videos.filter((v) => v.name !== name);
+            clips = clips.filter((c) => c.video !== name);
+            return json(route, 200, project());
+        }
         if (method === "PATCH" && path.startsWith("/api/videos/")) {
             const name = decodeURIComponent(path.slice("/api/videos/".length));
             // サーバーと同じく、ほかの動画と同じ撮影日は 409 で断る

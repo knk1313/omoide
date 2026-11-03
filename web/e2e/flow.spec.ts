@@ -59,6 +59,26 @@ test("撮影日にほかの動画と同じ日付や明日以降を選ぶと、�
     await expect(page.getByText(/2026年10月12日.*にしました/)).toBeVisible();
 });
 
+test("取り込んだ動画を、確かめてから消せる", async ({ page }) => {
+    const { calls } = await mockServer(page);
+    await page.goto("/videos");
+    await page.getByRole("button", { name: "20261012を消す" }).click();
+    const dialog = page.getByRole("dialog", { name: "「20261012」を消しますか" });
+    await expect(dialog).toContainText("元に戻せません");
+    await expectNoAxeViolations(page, "動画を消す確認");
+
+    // Esc では消さない
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+
+    await page.getByRole("button", { name: "20261012を消す" }).click();
+    await dialog.getByRole("button", { name: "消す" }).click();
+    await expect(page.getByLabel("20261012の撮影日")).toHaveCount(0);
+    await expect(page.getByText("「20261012」を消しました")).toBeVisible();
+    await expect(page.getByText(/パネル\s*9\s*件$/).last()).toBeVisible();
+});
+
 test("アップロードに失敗したら、理由を表示して選び直せる", async ({ page }) => {
     await mockServer(page, { failOnce: { "POST /api/videos": [415, "MP4 か MOV の動画を選んでください"] } });
     await page.goto("/videos");
