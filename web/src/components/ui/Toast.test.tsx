@@ -40,7 +40,7 @@ describe("Toast", () => {
         vi.useRealTimers();
     });
 
-    it("toast() で role=status のリージョンに通知が出る", async () => {
+    it("toast() でrole=statusのリージョンに通知が出る", async () => {
         const { user } = setup([{ title: "保存しました", description: "一覧に反映されます", type: "success" }]);
         const region = screen.getByRole("status");
         expect(region).toHaveAttribute("aria-live", "polite");
@@ -53,7 +53,7 @@ describe("Toast", () => {
         expect(item?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     });
 
-    it("8 秒後に自動で消える", async () => {
+    it("8秒後に自動で消える", async () => {
         const { user } = setup([{ title: "A" }]);
         await user.click(screen.getByRole("button", { name: "通知1" }));
         expect(screen.getByText("A")).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("Toast", () => {
         expect(screen.queryByText("A")).not.toBeInTheDocument();
     });
 
-    it("duration が 0 なら自動で消えない", async () => {
+    it("durationが0なら自動で消えない", async () => {
         const { user } = setup([{ title: "A", duration: 0 }]);
         await user.click(screen.getByRole("button", { name: "通知1" }));
         act(() => {
@@ -98,7 +98,20 @@ describe("Toast", () => {
         expect(screen.getByText("A")).toBeInTheDocument();
     });
 
-    it("閉じるボタンで消え、フォーカス中は Esc でも消える", async () => {
+    it("操作（元に戻す）を付けると自動で消えず、押すとトーストを閉じてからonClickを呼ぶ", async () => {
+        const onUndo = vi.fn();
+        const { user } = setup([{ title: "削除しました", action: { label: "元に戻す", onClick: onUndo } }]);
+        await user.click(screen.getByRole("button", { name: "通知1" }));
+        act(() => {
+            vi.advanceTimersByTime(60000);
+        });
+        expect(screen.getByText("削除しました")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "元に戻す" }));
+        expect(onUndo).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText("削除しました")).not.toBeInTheDocument();
+    });
+
+    it("閉じるボタンで消え、フォーカス中はEscでも消える", async () => {
         const { user } = setup([{ title: "A" }, { title: "B" }]);
         await user.click(screen.getByRole("button", { name: "通知1" }));
         await user.click(screen.getByRole("button", { name: "通知2" }));
@@ -113,7 +126,7 @@ describe("Toast", () => {
         expect(screen.queryByText("B")).not.toBeInTheDocument();
     });
 
-    it("同時に表示するのは 3 件までで、古いものから消える", async () => {
+    it("同時に表示するのは3件までで、古いものから消える", async () => {
         const { user } = setup([{ title: "A" }, { title: "B" }, { title: "C" }, { title: "D" }]);
         for (const name of ["通知1", "通知2", "通知3", "通知4"]) await user.click(screen.getByRole("button", { name }));
         expect(screen.queryByText("A")).not.toBeInTheDocument();
@@ -122,7 +135,7 @@ describe("Toast", () => {
         expect(screen.getAllByRole("button", { name: "通知を閉じる" })).toHaveLength(3);
     });
 
-    it("エラーは role=alert で 1 件ずつ出し、閉じられる（omoide での追加）", async () => {
+    it("エラーはrole=alertで1件ずつ出し、閉じられる（omoideでの追加）", async () => {
         const { user } = setup([{ title: "保存できませんでした", type: "error" }, { title: "保存しました", type: "success" }]);
         await user.click(screen.getByRole("button", { name: "通知1" }));
         await user.click(screen.getByRole("button", { name: "通知2" }));
@@ -133,7 +146,7 @@ describe("Toast", () => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("Provider の外で useToast を使うとエラーになる", () => {
+    it("Providerの外でuseToastを使うとエラーになる", () => {
         const spy = vi.spyOn(console, "error").mockImplementation(() => {});
         expect(() => render(<Trigger options={[]} />)).toThrow(/ToastProvider/);
         spy.mockRestore();

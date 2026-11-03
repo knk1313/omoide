@@ -29,7 +29,7 @@ function setup() {
 }
 
 describe("ConfirmDialog", () => {
-    it("OK で true、キャンセルで false を返す", async () => {
+    it("OKでtrue、キャンセルでfalseを返す", async () => {
         const { user, confirm } = setup();
         let result!: Promise<boolean>;
         act(() => {
@@ -50,7 +50,7 @@ describe("ConfirmDialog", () => {
         await expect(result).resolves.toBe(false);
     });
 
-    it("Esc で閉じると false を返し、開く前の要素へフォーカスを戻す", async () => {
+    it("Escで閉じるとfalseを返し、開く前の要素へフォーカスを戻す", async () => {
         const { user, confirm } = setup();
         screen.getByRole("button", { name: "削除" }).focus();
         let result!: Promise<boolean>;
@@ -62,7 +62,7 @@ describe("ConfirmDialog", () => {
         expect(screen.getByRole("button", { name: "削除" })).toHaveFocus();
     });
 
-    it("ラベルと tone を変えられ、閉じるボタンは出さない", () => {
+    it("ラベルとtoneを変えられ、閉じるボタンは出さない", () => {
         const { confirm } = setup();
         act(() => {
             void confirm({ title: "下書きを破棄", confirmLabel: "破棄する", cancelLabel: "戻る", tone: "error" });
@@ -92,7 +92,7 @@ describe("ConfirmDialog", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("Tab はダイアログの中で巡回する", async () => {
+    it("Tabはダイアログの中で巡回する", async () => {
         const { user, confirm } = setup();
         act(() => {
             void confirm({ title: "確認" });

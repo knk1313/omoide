@@ -51,7 +51,7 @@ async function openDialog(props: HarnessProps = {}) {
 }
 
 describe("ModalDialog", () => {
-    it("開くと role=dialog（aria-modal）で見出しに関連付き、見出しにフォーカスする", async () => {
+    it("開くとrole=dialog（aria-modal）で見出しに関連付き、見出しにフォーカスする", async () => {
         await openDialog();
         const dialog = screen.getByRole("dialog", { name: "確認" });
         expect(dialog).toHaveAttribute("aria-modal", "true");
@@ -67,7 +67,7 @@ describe("ModalDialog", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("Tab はダイアログの中で巡回する", async () => {
+    it("Tabはダイアログの中で巡回する", async () => {
         const { user } = await openDialog();
         await user.tab();
         expect(screen.getByRole("button", { name: "閉じる" })).toHaveFocus();
@@ -79,14 +79,14 @@ describe("ModalDialog", () => {
         expect(screen.getByLabelText("名前")).toHaveFocus();
     });
 
-    it("Esc で閉じ、開く前の要素へフォーカスを戻す", async () => {
+    it("Escで閉じ、開く前の要素へフォーカスを戻す", async () => {
         const { user } = await openDialog();
         await user.keyboard("{Escape}");
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "開く" })).toHaveFocus();
     });
 
-    it("閉じるボタンで閉じる（closeLabel で文言を変えられる）", async () => {
+    it("閉じるボタンで閉じる（closeLabelで文言を変えられる）", async () => {
         const { user } = await openDialog({ closeLabel: "やめる" });
         await user.click(screen.getByRole("button", { name: "やめる" }));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -103,13 +103,13 @@ describe("ModalDialog", () => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    it("dismissOnBackdrop のときは暗幕のクリックで閉じる", async () => {
+    it("dismissOnBackdropのときは暗幕のクリックで閉じる", async () => {
         const { user } = await openDialog({ dismissOnBackdrop: true });
         await user.click(screen.getByRole("dialog").parentElement!);
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("アクションボタンがあるときは閉じるボタンを出さず、2 つなら左右に分ける", async () => {
+    it("アクションボタンがあるときは閉じるボタンを出さず、2つなら左右に分ける", async () => {
         const { user } = await openDialog({ withActions: true });
         expect(screen.queryByRole("button", { name: "閉じる" })).not.toBeInTheDocument();
         const cancel = screen.getByRole("button", { name: "キャンセル" });
@@ -118,13 +118,13 @@ describe("ModalDialog", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("アクションの並びは 1 つで中央、2 つで左右、3 つ以上で右寄せ", () => {
+    it("アクションの並びは1つで中央、2つで左右、3つ以上で右寄せ", () => {
         expect(actionsLayoutClass(1)).toBe("justify-center");
         expect(actionsLayoutClass(2)).toBe("justify-between");
         expect(actionsLayoutClass(3)).toBe("justify-end");
     });
 
-    it("開いている間は背景に inert が付き、スクロールが止まり、閉じると戻る", async () => {
+    it("開いている間は背景にinertが付き、スクロールが止まり、閉じると戻る", async () => {
         const { user, container } = await openDialog();
         expect(container).toHaveAttribute("inert");
         expect(document.body.style.overflow).toBe("hidden");
@@ -133,7 +133,7 @@ describe("ModalDialog", () => {
         expect(document.body.style.overflow).toBe("");
     });
 
-    it("size=lg で広い幅になる", async () => {
+    it("size=lgで広い幅になる", async () => {
         await openDialog({ size: "lg" });
         expect(screen.getByRole("dialog")).toHaveClass("md:max-w-4xl");
     });

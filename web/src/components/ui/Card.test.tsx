@@ -17,10 +17,10 @@ describe("Card", () => {
         expect(card.className).not.toMatch(/shadow/);
     });
 
-    it("as=section のとき CardHeader の見出しと aria-labelledby で関連付く", () => {
+    it("as=sectionのときCardHeaderの見出しとaria-labelledbyで関連付く", () => {
         render(
             <Card as="section">
-                <CardHeader title="最近の更新" description="直近 7 日間" actions={<Button size="sm" variant="outline">すべて見る</Button>} />
+                <CardHeader title="最近の更新" description="直近7日間" actions={<Button size="sm" variant="outline">すべて見る</Button>} />
                 <CardBody>本文</CardBody>
                 <CardFooter>フッター</CardFooter>
             </Card>,
@@ -28,11 +28,11 @@ describe("Card", () => {
         const section = screen.getByRole("region", { name: "最近の更新" });
         expect(section).toBeInTheDocument();
         expect(screen.getByRole("heading", { level: 2, name: "最近の更新" })).toBeInTheDocument();
-        expect(screen.getByText("直近 7 日間")).toBeInTheDocument();
+        expect(screen.getByText("直近7日間")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "すべて見る" })).toBeInTheDocument();
     });
 
-    it("見出しレベルと padding を切り替えられる", () => {
+    it("見出しレベルとpaddingを切り替えられる", () => {
         render(
             <Card padding="sm" data-testid="card">
                 <CardHeader as="h3" title="小さいカード" data-testid="header" />
@@ -44,22 +44,22 @@ describe("Card", () => {
         expect(screen.getByTestId("body")).toHaveClass("px-4", "py-3");
     });
 
-    it("interactive ではタイトルのリンクがカード全体に広がる", () => {
+    it("interactiveではタイトルのリンクがカード全体に広がる", () => {
         render(
             <MemoryRouter>
                 <Card interactive data-testid="card">
-                    <CardHeader title="申請 No.123" href="/items/123" />
+                    <CardHeader title="申請No.123" href="/items/123" />
                     <CardBody>本文</CardBody>
                 </Card>
             </MemoryRouter>,
         );
-        const link = screen.getByRole("link", { name: "申請 No.123" });
+        const link = screen.getByRole("link", { name: "申請No.123" });
         expect(link).toHaveAttribute("href", "/items/123");
         expect(link).toHaveClass("after:absolute", "after:inset-0", "underline");
         expect(screen.getByTestId("card")).toHaveClass("relative", "hover:bg-surface-hover");
     });
 
-    it("Card の外で CardBody を使うとエラーになる", () => {
+    it("Cardの外でCardBodyを使うとエラーになる", () => {
         expect(() => render(<CardBody>本文</CardBody>)).toThrow();
     });
 

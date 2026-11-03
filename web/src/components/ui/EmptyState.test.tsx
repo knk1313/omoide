@@ -17,13 +17,13 @@ describe("EmptyState", () => {
         expect(container.firstElementChild).toHaveClass("items-center", "text-center", "py-16");
     });
 
-    it("as で見出しレベルを変えられ、任意の要素は省略できる", () => {
+    it("asで見出しレベルを変えられ、任意の要素は省略できる", () => {
         render(<EmptyState title="該当する結果がありません" as="h3" />);
         expect(screen.getByRole("heading", { level: 3, name: "該当する結果がありません" })).toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
-    it("className で拡張できる", () => {
+    it("classNameで拡張できる", () => {
         const { container } = render(<EmptyState title="A" className="min-h-80" />);
         expect(container.firstElementChild).toHaveClass("min-h-80", "py-16");
     });

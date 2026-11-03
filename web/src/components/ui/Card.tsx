@@ -29,7 +29,7 @@ const CardContext = createContext<CardContextValue | null>(null);
 
 function useCard(): CardContextValue {
     const ctx = useContext(CardContext);
-    if (!ctx) throw new Error("CardHeader / CardBody / CardFooter は Card の中で使ってください");
+    if (!ctx) throw new Error("CardHeader / CardBody / CardFooterはCardの中で使ってください");
     return ctx;
 }
 

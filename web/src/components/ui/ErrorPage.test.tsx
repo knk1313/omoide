@@ -6,21 +6,21 @@ import { Button } from "./Button";
 import { ErrorPage } from "./ErrorPage";
 
 describe("ErrorPage", () => {
-    it("section が h1 に関連付き、ステータス番号と既定の「ホームへ戻る」リンクを描画する", () => {
+    it("sectionがh1に関連付き、ステータス番号と既定の「ホームへ戻る」リンクを描画する", () => {
         render(
             <MemoryRouter>
-                <ErrorPage status={404} title="ページが見つかりません" description="URL が正しいか確認してください。" />
+                <ErrorPage status={404} title="ページが見つかりません" description="URLが正しいか確認してください。" />
             </MemoryRouter>,
         );
         const section = screen.getByRole("region", { name: "ページが見つかりません" });
         expect(section.tagName).toBe("SECTION");
         expect(screen.getByRole("heading", { level: 1 })).toHaveClass("text-std-28B-150");
         expect(screen.getByText("404")).toHaveClass("text-dsp-48B-140", "text-text-subtle");
-        expect(screen.getByText("URL が正しいか確認してください。")).toBeInTheDocument();
+        expect(screen.getByText("URLが正しいか確認してください。")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "ホームへ戻る" })).toHaveAttribute("href", "/");
     });
 
-    it("actions を差し替えられ、status は省略できる", () => {
+    it("actionsを差し替えられ、statusは省略できる", () => {
         render(
             <ErrorPage
                 title="エラーが発生しました"

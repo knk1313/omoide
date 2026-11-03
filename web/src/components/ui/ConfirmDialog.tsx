@@ -30,7 +30,7 @@ const ConfirmContext = createContext<ConfirmContextValue | null>(null);
 
 export function useConfirm(): ConfirmContextValue {
     const ctx = useContext(ConfirmContext);
-    if (!ctx) throw new Error("useConfirm は ConfirmProvider の内側で使ってください");
+    if (!ctx) throw new Error("useConfirmはConfirmProviderの内側で使ってください");
     return ctx;
 }
 

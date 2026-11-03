@@ -14,7 +14,7 @@ type Props = {
 /** 主な操作のボタンの見た目。どの画面でも同じ大きさ（DADS ボタン lg・幅いっぱい）にする。 */
 export const PRIMARY_ACTION: ButtonStyleProps = { variant: "solid-fill", size: "lg", block: true };
 
-// 画面の一番下に固定する操作の帯（omoide の業務部品。docs/migration-decisions.md M-09）。
+// 画面の一番下に固定する操作の帯（omoideの業務部品。web/README.mdの「テンプレートとの違い」）。
 // 主な操作（次へ・生成・保存）はどの画面でも一番下の全幅に置き、戻る操作と要約はその上の行に置く。
 // iPhone のホームバーに重ならないよう、安全領域の分だけ余白を取る。
 export default function BottomBar({ back, summary, children }: Props) {
