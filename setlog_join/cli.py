@@ -1,17 +1,23 @@
 import argparse
+import getpass
 import shutil
 import sys
-from datetime import datetime
+import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 
+from .auth import MAX_PASSWORD_LENGTH, ShareAuth, parse_duration
 from .cache import load_or_scan
 from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
-from .network import HostError, port_available, resolve_host
+from .network import port_available, resolve_host
 from .probe import VideoInfo
 from .scan import VideoScan
 from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
+
+
+MIN_PASSWORD_LENGTH = 4
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -44,6 +50,9 @@ def main(argv: list[str] | None = None) -> int:
         help="待ち受けるアドレス。省略すると、この Mac の LAN のプライベートアドレスを使う",
     )
     serve.add_argument("--port", type=int, default=8080, help="待ち受けるポート (既定: 8080)")
+    serve.add_argument(
+        "--expires", default="2h", help="共有を終えるまでの時間。2h・30m・90s のように指定する (既定: 2h)",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "scan":
@@ -51,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "join":
         return join_command(args.input, args.select, args.speed, args.output)
     if args.command == "serve":
-        return serve_command(args.input, args.host, args.port)
+        return serve_command(args.input, args.host, args.port, args.expires)
     return 1
 
 
@@ -112,7 +121,7 @@ def join_command(folder: Path, select: str | None, speed: float, output_dir: Pat
     return 0
 
 
-def serve_command(folder: Path, host: str | None, port: int) -> int:
+def serve_command(folder: Path, host: str | None, port: int, expires: str) -> int:
     # サーバーの依存は scan / join では使わないので、ここで読み込む
     import uvicorn
 
@@ -120,10 +129,16 @@ def serve_command(folder: Path, host: str | None, port: int) -> int:
 
     try:
         host = resolve_host(host)
-    except HostError as e:
+        lifetime = parse_duration(expires)
+    except ValueError as e:
         return _fail(str(e))
     if not port_available(host, port):
         return _fail(f"ポート {port} は使用中です。--port で別の番号を指定してください。")
+
+    # 解析を待たずに席を外せるよう、パスワードは先に聞く
+    password = _ask_password()
+    if password is None:
+        return _fail("パスワードが設定されなかったため、終了します。")
 
     videos = _load_videos(folder)
     if videos is None:
@@ -142,11 +157,56 @@ def serve_command(folder: Path, host: str | None, port: int) -> int:
     if not (WEB_DIST / "index.html").is_file():
         print("画面がまだビルドされていません。`cd web && npm run build` を実行してください。", file=sys.stderr)
 
-    print(f"\nURL: http://{host}:{port}/")
+    auth = ShareAuth(password, lifetime)
+    url = f"http://{host}:{port}/p/{auth.token}"
+    ends_at = datetime.now() + timedelta(seconds=lifetime)
+    print(f"\nURL: {url}")
+    print(f"期限: {ends_at:%H:%M} まで")
+    _print_qr(url)
     # uvicorn が動き出すと戻らないので、案内を先に出し切る
-    print("同じ Wi-Fi に接続したスマホで開いてください。終了するには Ctrl+C を押してください。", flush=True)
-    uvicorn.run(create_app(scans), host=host, port=port, log_level="warning")
+    print("同じ Wi-Fi に接続したスマホで QR コードを読み取ってください。終了するには Ctrl+C を押してください。", flush=True)
+
+    server = uvicorn.Server(uvicorn.Config(create_app(scans, auth), host=host, port=port, log_level="warning"))
+    expiry = threading.Timer(lifetime, lambda: setattr(server, "should_exit", True))
+    expiry.daemon = True
+    expiry.start()
+    try:
+        server.run()
+    finally:
+        expiry.cancel()
+        auth.end()
+    print("共有を終了しました。この URL にはもうアクセスできません。")
     return 0
+
+
+def _ask_password() -> str | None:
+    """パスワードをターミナルで対話入力する。コマンド引数で受け取らず、シェルの履歴に残さない。"""
+    for _ in range(3):
+        try:
+            password = getpass.getpass("スマホで入力するパスワード: ")
+            if len(password) < MIN_PASSWORD_LENGTH:
+                print(f"{MIN_PASSWORD_LENGTH} 文字以上にしてください。")
+                continue
+            if len(password) > MAX_PASSWORD_LENGTH:
+                print(f"{MAX_PASSWORD_LENGTH} 文字以内にしてください。")
+                continue
+            if getpass.getpass("もう一度入力してください: ") != password:
+                print("一致しませんでした。")
+                continue
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return None
+        return password
+    return None
+
+
+def _print_qr(url: str) -> None:
+    import qrcode
+
+    qr = qrcode.QRCode(border=2)
+    qr.add_data(url)
+    # 端末なら白黒の色を明示して、背景色のテーマによらず読み取れるようにする
+    qr.print_ascii(tty=sys.stdout.isatty())
 
 
 def _load_videos(folder: Path) -> list[VideoInfo] | None:
