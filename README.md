@@ -17,7 +17,7 @@ python3 -m venv .venv
 .venv/bin/python main.py scan --export   # 中身のあるパネルを output/<動画名>/ に書き出す
 
 # パネルをつないで 1 本の動画にする (output/omoide-<日時>.mp4)
-.venv/bin/python main.py join --speed 1.5                     # 中身のあるパネルをすべて使う
+.venv/bin/python main.py join --speed 1.5                     # 除外していない、中身のあるパネルをすべて使う
 .venv/bin/python main.py join --select collection_export/001-1,collection_export/002-3
 
 # 同じ Wi-Fi のスマホから操作するサーバーを起動する (先に画面をビルドしておく: cd web && npm run build)
@@ -32,6 +32,8 @@ python3 -m venv .venv
 - `join` は上の人の全クリップ（時系列）→ 中の人 → 下の人の順につなぐ。速度は `0.5` / `1` / `1.5` / `2`
 
 解析結果は `.setlog-join/cache/` に保存し、動画のファイルサイズと更新日時が変わらなければ次回の解析を省く。`scan` は、中身のあるパネルごとのサムネイル（幅 400px の JPEG）も `.setlog-join/thumbnails/` に作る。
+
+採用・除外と速度は `.setlog-join/projects/project.json` に保存する。`join` は `--select` と `--speed` を省略すると、この内容を使う。
 
 `input/`・`output/`・`.setlog-join/` の中身は Git 管理外。
 
