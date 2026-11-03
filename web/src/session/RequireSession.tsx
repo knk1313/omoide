@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router";
+import { Loading } from "@/components/app/PageStatus";
 import { useSession } from "./Session";
 import ShareProblem, { isShareProblem } from "./ShareProblem";
 
@@ -8,7 +9,7 @@ export default function RequireSession() {
     const location = useLocation();
 
     if (status === "checking") {
-        return <p className="pt-8 text-center text-sm text-muted">確認しています…</p>;
+        return <Loading label="確認しています" />;
     }
     if (status === "login") {
         return <Navigate to="/login" replace state={{ from: location.pathname }} />;

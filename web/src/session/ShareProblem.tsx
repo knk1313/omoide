@@ -1,5 +1,6 @@
 import { Clock, QrCode, WifiOff, type LucideIcon } from "lucide-react";
-import Button from "@/components/Button";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import type { SessionStatus } from "./Session";
 
 type Problem = "no-share" | "expired" | "offline";
@@ -33,32 +34,29 @@ export function isShareProblem(status: SessionStatus): status is Problem {
     return status in MESSAGES;
 }
 
-// ログインより前に進めないときの案内。次に取る操作を短く示す。
+// ログインより前に進めないときの案内（omoide の業務部品）。テンプレートの ErrorPage と同じ並び（見出し → 説明 → 次の行動）で、
+// 原因の候補を箇条書きで添える。
 export default function ShareProblem({ status }: { status: Problem }) {
-    const { icon: Icon, title, message, checks = [] } = MESSAGES[status];
+    const { icon, title, message, checks = [] } = MESSAGES[status];
     return (
-        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 pb-[14vh] text-center">
-            <Icon className="h-10 w-10 text-faint" aria-hidden />
-            <h1 className="text-lg font-semibold text-ink">{title}</h1>
-            <p className="text-sm leading-relaxed text-muted">{message}</p>
+        <section role="alert" aria-labelledby="share-problem-title" className="flex flex-col items-center gap-4 py-16 text-center text-16 leading-170 tracking-2 text-text">
+            <Icon icon={icon} size="xl" className="text-text-subtle" />
+            <h1 id="share-problem-title" className="m-0 text-std-24B-150 text-text-strong">
+                {title}
+            </h1>
+            <p className="m-0 text-text-muted">{message}</p>
             {checks.length > 0 && (
-                <ul className="flex w-full flex-col gap-2 text-left text-sm leading-relaxed text-ink">
+                <ul className="m-0 flex w-full list-disc flex-col gap-2 pl-6 text-left">
                     {checks.map((check) => (
-                        <li key={check} className="flex items-start gap-2 rounded-control bg-surface px-3 py-2">
-                            {/* 1 行目の高さの箱の中央に置き、折り返しても 1 行目とそろえる */}
-                            <span aria-hidden className="flex h-[1lh] shrink-0 items-center">
-                                <span className="h-1.5 w-1.5 rounded-full bg-muted" />
-                            </span>
-                            {check}
-                        </li>
+                        <li key={check}>{check}</li>
                     ))}
                 </ul>
             )}
             {status === "offline" && (
-                <Button variant="secondary" className="mt-2 h-12 px-8" onClick={() => window.location.reload()}>
+                <Button variant="outline" block className="mt-4" onClick={() => window.location.reload()}>
                     もう一度試す
                 </Button>
             )}
-        </div>
+        </section>
     );
 }

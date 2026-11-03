@@ -88,7 +88,7 @@ describe("ログインより前に進めないとき", () => {
         renderApp("/");
         expect(await screen.findByRole("heading", { name: "QR コードを読み取ってください" })).toBeInTheDocument();
         // ログインする前は、手順を見せない
-        expect(screen.queryByRole("list", { name: "手順" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("navigation", { name: "手順" })).not.toBeInTheDocument();
     });
 
     it("期限が切れていれば、Mac で起動し直すよう案内する", async () => {

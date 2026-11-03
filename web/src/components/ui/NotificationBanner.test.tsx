@@ -79,6 +79,12 @@ describe("NotificationBanner", () => {
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
+    it("live=\"assertive\" なら role=alert で、すぐ読み上げる（omoide での追加）", () => {
+        render(<NotificationBanner type="error" title="読み込めませんでした" live="assertive" />);
+        expect(screen.getByRole("alert")).toHaveTextContent("読み込めませんでした");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
     it("className で拡張できる", () => {
         const { container } = render(<NotificationBanner title="A" className="mb-6" />);
         expect(container.firstElementChild).toHaveClass("mb-6", "border-info");

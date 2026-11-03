@@ -5,6 +5,8 @@ import { Icon } from "./Icon";
 
 // トースト通知。DADS に該当コンポーネントがないため、ノティフィケーションバナーの縮小版として設計する（docs/decisions.md D-10）。
 //   - 画面右上（モバイルは下部中央）に固定表示、role="status"（aria-live="polite"）のリージョン
+//   - omoide での変更（docs/migration-decisions.md M-05）: モバイルでも上部に出す（下部に固定した主な操作と重ねない）。
+//     エラーは利用者が次の操作を変える必要があるため、1 件ずつ role="alert" で読み上げる
 //   - 意味色の枠 2px、角丸 8px、elevation-3、アイコン、閉じるボタン（固定表示には必ず閉じるボタンを付ける）
 //   - 8 秒で自動消去。ホバー・フォーカス中は止める。フォーカスがあるときは Esc で閉じる。同時表示は 3 件まで
 //   const { toast } = useToast();
@@ -65,15 +67,22 @@ export function ToastProvider({ children }: ToastProviderProps) {
     return (
         <ToastContext.Provider value={{ toast, dismiss }}>
             {children}
-            {/* リージョンは常に置いておく（追加時に aria-live が機能するように）。モバイルは下部中央、md 以上は右上。 */}
-            <div
-                role="status"
-                aria-live="polite"
-                className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 md:inset-x-auto md:top-4 md:right-4 md:bottom-auto md:w-full md:max-w-sm"
-            >
-                {items.map((item) => (
-                    <ToastView key={item.id} item={item} dismiss={dismiss} />
-                ))}
+            {/* 画面の上に出す（下部に固定した主な操作と重ねない）。iPhone のノッチの下から始める。md 以上は右上。 */}
+            <div className="pointer-events-none fixed inset-x-4 top-safe-4 z-50 flex flex-col gap-2 md:inset-x-auto md:right-4 md:w-full md:max-w-sm">
+                {/* リージョンは常に置いておく（追加時に aria-live が機能するように）。 */}
+                <div role="status" aria-live="polite" className="flex flex-col gap-2 empty:hidden">
+                    {items
+                        .filter((item) => item.type !== "error")
+                        .map((item) => (
+                            <ToastView key={item.id} item={item} dismiss={dismiss} />
+                        ))}
+                </div>
+                {/* エラーは 1 件ずつ role="alert" にし、出たときにすぐ読み上げる。 */}
+                {items
+                    .filter((item) => item.type === "error")
+                    .map((item) => (
+                        <ToastView key={item.id} item={item} dismiss={dismiss} />
+                    ))}
             </div>
         </ToastContext.Provider>
     );
@@ -107,6 +116,7 @@ function ToastView({ item, dismiss }: { item: ToastItem; dismiss: (id: number) =
 
     return (
         <div
+            role={item.type === "error" ? "alert" : undefined}
             data-type={item.type}
             className={cn("pointer-events-auto flex items-start gap-2 rounded-8 border-2 bg-surface p-4 pr-2 text-16 leading-170 tracking-2 text-text shadow-3", color.frame)}
             onMouseEnter={() => setPaused(true)}

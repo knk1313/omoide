@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Job } from "@/api/types";
 import { fakeServer, loggedIn } from "@/test/fakeServer";
-import { renderApp } from "@/test/renderApp";
+import { currentStep, renderApp } from "@/test/renderApp";
 import { polling } from "./preview/useJob";
 
 const job = (kind: Job["kind"], status: Job["status"], progress: number, extra: Partial<Job> = {}): Job => ({
@@ -180,7 +180,6 @@ describe("プレビュー・ダウンロード画面", () => {
 
     it("手順の表示は 4 番目", async () => {
         await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
-        const steps = screen.getByRole("list", { name: "手順" });
-        expect(within(steps).getByText("4. 確認")).toHaveAttribute("aria-current", "step");
+        expect(currentStep()).toHaveTextContent(/ステップ 4 \/ 4、現在のステップ.*確認/);
     });
 });

@@ -1,0 +1,35 @@
+/*
+ * omoide 独自のトークンとユーティリティ（テンプレートにないもの）。
+ * スマホのブラウザで全画面に近い形で使うため、iPhone のノッチやホームバー（安全領域）を避ける余白を持つ。
+ */
+@theme {
+  /* スマホの 1 列表示の最大幅（Mac のブラウザで開いたときも、この幅で中央に寄せる） */
+  --container-app: 28rem; /* 448px */
+}
+
+/* 安全領域と 12px / 16px の大きい方を余白にする（ノッチ・ホームバーに重ねない） */
+@utility pt-safe-3 {
+  padding-top: max(env(safe-area-inset-top), 0.75rem);
+}
+
+@utility pb-safe-3 {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+}
+
+@utility top-safe-4 {
+  top: max(env(safe-area-inset-top), 1rem);
+}
+
+@utility top-safe-2 {
+  top: max(env(safe-area-inset-top), 0.5rem);
+}
+
+/* 長押しで iOS のリンク・画像のメニューを出さない（タイルの長押しで再生するため） */
+@utility touch-callout-none {
+  -webkit-touch-callout: none;
+}
+
+/* 安全領域だけの余白（ヘッダーの高さに足す） */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}

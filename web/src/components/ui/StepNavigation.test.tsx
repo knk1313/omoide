@@ -44,6 +44,15 @@ describe("StepNavigation", () => {
         expect(screen.getByRole("list")).toHaveClass("flex-col");
     });
 
+    it("size=\"sm\" は横に並べ、横スクロールさせずに丸を小さくする（omoide での追加）", () => {
+        render(<StepNavigation steps={steps} current={1} size="sm" orientation="vertical" />);
+        expect(screen.getByRole("list")).toHaveClass("flex-row");
+        expect(screen.getByRole("navigation")).not.toHaveClass("overflow-x-auto");
+        const current = screen.getAllByRole("listitem")[1];
+        expect(current).toHaveAttribute("aria-current", "step");
+        expect(current.querySelector("[aria-hidden=true]")).toHaveClass("size-8");
+    });
+
     it("アクセシビリティ違反がない", async () => {
         const { container } = render(<StepNavigation steps={steps} current={1} orientation="vertical" />);
         await expectNoA11yViolations(container);

@@ -105,7 +105,7 @@ describe("動画を取り込む画面", () => {
         fireEvent.change(date, { target: { value: "2026-10-31" } });
         await user.click(screen.getByRole("button", { name: "この日付にする" }));
 
-        expect(await screen.findByRole("status")).toHaveTextContent("2026年10月31日(土)にしました");
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2026年10月31日(土)にしました"));
         await waitFor(() => expect(screen.getByLabelText("novの撮影日")).toHaveValue("2026-10-31"));
         expect(screen.queryByLabelText("この動画を撮影した日")).not.toBeInTheDocument();
     });

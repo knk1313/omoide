@@ -122,6 +122,17 @@ describe("Toast", () => {
         expect(screen.getAllByRole("button", { name: "通知を閉じる" })).toHaveLength(3);
     });
 
+    it("エラーは role=alert で 1 件ずつ出し、閉じられる（omoide での追加）", async () => {
+        const { user } = setup([{ title: "保存できませんでした", type: "error" }, { title: "保存しました", type: "success" }]);
+        await user.click(screen.getByRole("button", { name: "通知1" }));
+        await user.click(screen.getByRole("button", { name: "通知2" }));
+        expect(screen.getByRole("alert")).toHaveTextContent("保存できませんでした");
+        expect(within(screen.getByRole("status")).queryByText("保存できませんでした")).not.toBeInTheDocument();
+        expect(within(screen.getByRole("status")).getByText("保存しました")).toBeInTheDocument();
+        await user.click(within(screen.getByRole("alert")).getByRole("button", { name: "通知を閉じる" }));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("Provider の外で useToast を使うとエラーになる", () => {
         const spy = vi.spyOn(console, "error").mockImplementation(() => {});
         expect(() => render(<Trigger options={[]} />)).toThrow(/ToastProvider/);

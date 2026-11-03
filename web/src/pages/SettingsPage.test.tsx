@@ -1,8 +1,8 @@
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Project } from "@/api/types";
 import { fakeServer, loggedIn, sampleProject } from "@/test/fakeServer";
-import { renderApp } from "@/test/renderApp";
+import { currentStep, renderApp } from "@/test/renderApp";
 
 async function openSettings(routes: Parameters<typeof fakeServer>[0] = {}) {
     const server = fakeServer({ ...loggedIn, ...routes });
@@ -80,7 +80,6 @@ describe("出力設定画面", () => {
 
     it("手順の表示は 3 番目", async () => {
         await openSettings();
-        const steps = screen.getByRole("list", { name: "手順" });
-        expect(within(steps).getByText("3. 速度")).toHaveAttribute("aria-current", "step");
+        expect(currentStep()).toHaveTextContent(/ステップ 3 \/ 4、現在のステップ.*速度/);
     });
 });

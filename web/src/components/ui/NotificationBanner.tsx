@@ -32,8 +32,11 @@ export type NotificationBannerProps = {
     onClose?: () => void;
     /** アクションボタン群（Button）。md 以上では右寄せ、モバイルでは縦に積む。 */
     actions?: ReactNode;
-    /** 動的に表示する通知として role="status" を付ける（ページ読み込み時の静的表示では付けない）。 */
-    live?: boolean;
+    /**
+     * 動的に表示する通知として role="status" を付ける（ページ読み込み時の静的表示では付けない）。
+     * "assertive" は role="alert"。操作の結果としてすぐ伝えるべきエラーに使う（omoide での追加。docs/migration-decisions.md M-06）。
+     */
+    live?: boolean | "assertive";
     id?: string;
     /** タイトル見出しの ref。送信エラーの後などに見出しへフォーカスを移すときに使う（見出しは tabIndex=-1）。 */
     headingRef?: Ref<HTMLHeadingElement>;
@@ -80,7 +83,7 @@ export function NotificationBanner({
     return (
         <div
             id={id}
-            role={live ? "status" : undefined}
+            role={live === "assertive" ? "alert" : live ? "status" : undefined}
             data-type={type}
             data-style={style}
             className={cn(

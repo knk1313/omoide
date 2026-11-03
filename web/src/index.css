@@ -3,6 +3,7 @@
 @import "./tokens/primitives.css";
 @import "./tokens/theme.css";
 @import "./tokens/typography.css";
+@import "./tokens/app.css";
 @import "./tokens/legacy.css";
 
 /* 既定のテキスト設定（DADS Std-16N-170 相当）。前景色と背景色を必ずセットで指定する。

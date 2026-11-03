@@ -1,6 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router";
-import AppLayout from "@/components/AppLayout";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import AppLayout from "@/layouts/AppLayout";
+import ErrorBoundary from "@/components/app/ErrorBoundary";
 import ClipsPage from "@/pages/ClipsPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";

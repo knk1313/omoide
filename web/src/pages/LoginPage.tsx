@@ -2,8 +2,14 @@ import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Wifi } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
-import Button from "@/components/Button";
-import IconButton from "@/components/IconButton";
+import { Loading } from "@/components/app/PageStatus";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
+import { Input } from "@/components/ui/Input";
+import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSession } from "@/session/Session";
 import ShareProblem, { isShareProblem } from "@/session/ShareProblem";
 
@@ -20,7 +26,7 @@ export default function LoginPage() {
     const from = (location.state as { from?: string } | null)?.from ?? "/";
 
     if (status === "checking") {
-        return <p className="pt-8 text-center text-sm text-muted">確認しています…</p>;
+        return <Loading label="確認しています" />;
     }
     if (status === "ready") {
         return <Navigate to={from} replace />;
@@ -49,25 +55,26 @@ export default function LoginPage() {
     }
 
     return (
-        <form onSubmit={submit} className="flex flex-1 flex-col gap-5 pt-6" noValidate>
-            <div className="flex flex-col gap-2">
-                <h1 className="text-xl font-semibold text-ink">パスワードを入力</h1>
-                <p className="flex items-start gap-2 text-sm leading-relaxed text-muted">
-                    {/* 1 行目の高さ (1lh) の箱の中央に置き、文字が折り返しても 1 行目とそろえる */}
-                    <span className="flex h-[1lh] shrink-0 items-center">
-                        <Wifi className="h-4 w-4 text-brand" aria-hidden />
+        <form onSubmit={submit} className="flex flex-col gap-6" noValidate>
+            <PageHeader
+                title="パスワードを入力"
+                description={
+                    <span className="flex items-start gap-2">
+                        {/* 1 行目の高さ (1lh) の箱の中央に置き、文字が折り返しても 1 行目とそろえる（テンプレートの D-21） */}
+                        <span className="flex h-lh shrink-0 items-center">
+                            <Icon icon={Wifi} size="sm" className="text-primary" />
+                        </span>
+                        Mac と同じ Wi-Fi に接続してから、Mac で設定したパスワードを入力してください。
                     </span>
-                    Mac と同じ Wi-Fi に接続してから、Mac で設定したパスワードを入力してください。
-                </p>
-            </div>
+                }
+            />
 
-            <div className="flex flex-col gap-1.5">
-                <label htmlFor="password" className="text-sm font-medium text-ink">
-                    パスワード
-                </label>
+            {/* 送信の結果のエラーは、入力欄の上にまとめて出し、すぐ読み上げる（docs/migration-decisions.md M-10） */}
+            {error && <NotificationBanner id="login-error" type="error" live="assertive" title={error} />}
+
+            <FormField label="パスワード" id="password">
                 <div className="relative">
-                    <input
-                        id="password"
+                    <Input
                         type={visible ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -75,28 +82,21 @@ export default function LoginPage() {
                         autoCapitalize="none"
                         autoCorrect="off"
                         spellCheck={false}
-                        aria-invalid={error !== null}
+                        invalid={error !== null}
                         aria-describedby={error ? "login-error" : undefined}
-                        // iOS Safari は 16px 未満の入力欄にフォーカスすると画面を拡大するので、16px にする
-                        className="h-12 w-full rounded-control border border-control-border bg-surface pl-4 pr-12 text-base text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 aria-[invalid=true]:border-danger"
+                        className="pr-14"
                     />
                     <IconButton
-                        className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2"
-                        onClick={() => setVisible((v) => !v)}
-                        aria-label={visible ? "パスワードを隠す" : "パスワードを表示"}
+                        icon={visible ? EyeOff : Eye}
+                        label={visible ? "パスワードを隠す" : "パスワードを表示"}
                         aria-pressed={visible}
-                    >
-                        {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </IconButton>
+                        className="absolute top-0.5 right-0.5"
+                        onClick={() => setVisible((v) => !v)}
+                    />
                 </div>
-                {error && (
-                    <p id="login-error" role="alert" className="text-sm text-danger">
-                        {error}
-                    </p>
-                )}
-            </div>
+            </FormField>
 
-            <Button type="submit" className="h-12 w-full text-base" disabled={!password || submitting}>
+            <Button type="submit" size="lg" block loading={submitting} disabled={!password}>
                 {submitting ? "接続しています…" : "接続する"}
             </Button>
         </form>

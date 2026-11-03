@@ -55,9 +55,9 @@ export default defineConfig([
     {
         // 移行中の、まだテンプレートの部品に移していないファイル。移し終えたら外す（docs/migration-decisions.md M-03）。
         files: [
-            "src/components/{AppLayout,BottomBar,Button,Card,Checkbox,ConfirmDialog,EmptyState,ErrorBoundary,IconButton,Input,Modal,NotFoundContent,RequiredMark,Select,StatusBadge,StepPlaceholder,Textarea,Toast,Video}.tsx",
-            "src/pages/**",
-            "src/session/**",
+            "src/components/{BottomBar,Button,Card,Checkbox,ConfirmDialog,EmptyState,IconButton,Input,Modal,RequiredMark,Select,StatusBadge,StepPlaceholder,Textarea,Toast,Video}.tsx",
+            "src/pages/{ClipsPage,PreviewPage,SettingsPage,VideosPage}.tsx",
+            "src/pages/{clips,preview}/**",
         ],
         rules: { "no-restricted-syntax": "off" },
     },
