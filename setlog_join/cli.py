@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .auth import MAX_PASSWORD_LENGTH, ShareAuth, parse_duration
 from .cache import load_or_scan
+from .clean import WORK_DIR, clean_targets, format_size, remove
 from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
@@ -57,6 +58,13 @@ def main(argv: list[str] | None = None) -> int:
         "--expires", default="2h", help="共有を終えるまでの時間。2h・30m・90s のように指定する (既定: 2h)",
     )
 
+    clean = sub.add_parser(
+        "clean", help="入力動画と、そこから作った生成物をまとめて消す（serve を止めてから実行する）",
+    )
+    clean.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    clean.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
+    clean.add_argument("--yes", action="store_true", help="確認せずに消す")
+
     args = parser.parse_args(argv)
     if args.command == "scan":
         return scan_command(args.input, args.export)
@@ -64,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
         return join_command(args.input, args.select, args.speed, args.output)
     if args.command == "serve":
         return serve_command(args.input, args.host, args.port, args.expires)
+    if args.command == "clean":
+        return clean_command(args.input, args.output, args.yes)
     return 1
 
 
@@ -127,6 +137,33 @@ def join_command(folder: Path, select: str | None, speed: float | None, output_d
     join_segments(segments, speed, out_path)
     seconds = sum(s.clip.duration for s in segments) / speed
     print(f"書き出しました: {out_path}  (約 {seconds:.1f}s)")
+    return 0
+
+
+def clean_command(input_dir: Path, output_dir: Path, yes: bool, work_dir: Path = WORK_DIR) -> int:
+    targets = clean_targets(input_dir, output_dir, work_dir)
+    if not targets:
+        print("消すものはありません。")
+        return 0
+
+    print("次を消します。元に戻せません。")
+    for target in targets:
+        suffix = "/" if target.path.is_dir() else ""
+        print(f"  {target.path}{suffix}  ({format_size(target.size)})")
+    print(f"合計 {format_size(sum(t.size for t in targets))}。選んだクリップ・速度・撮影日（project.json）も消えます。")
+    print("serve を動かしている場合は、先に止めてください。")
+
+    if not yes:
+        try:
+            answer = input("消しますか？ [y/N] ")
+        except EOFError:
+            answer = ""
+        if answer.strip().lower() not in ("y", "yes"):
+            print("やめました。何も消していません。")
+            return 1
+
+    remove(targets)
+    print(f"{len(targets)} 件を消しました。")
     return 0
 
 

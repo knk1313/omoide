@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { PanelClip, Project } from "@/api/types";
-import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
-import Button from "@/components/Button";
-import { useToast } from "@/components/Toast";
+import { LoadFailure, Loading } from "@/components/app/PageStatus";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { RadioGroup } from "@/components/ui/RadioGroup";
+import { useToast } from "@/components/ui/Toast";
+import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatDay, formatSeconds } from "@/lib/format";
 import { useSession } from "@/session/Session";
 import ClipPlayer from "./clips/ClipPlayer";
@@ -59,7 +63,7 @@ export default function ClipsPage() {
             setSelected(new Set([clip.id]), next);
             api.setSelected(clip.id, next).catch((error: unknown) => {
                 setSelected(new Set([clip.id]), clip.selected);
-                if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
+                if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "保存できませんでした", type: "error" });
             });
         },
         [setSelected, handleError, toast],
@@ -83,7 +87,7 @@ export default function ClipsPage() {
             await api.selectAll(selected, panel === null ? {} : { panel, only });
         } catch (error) {
             setData((prev) => prev && { ...prev, clips: before });
-            if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
+            if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "保存できませんでした", type: "error" });
         } finally {
             setBulkBusy(false);
         }
@@ -96,18 +100,23 @@ export default function ClipsPage() {
     );
     const filterLabel = users.find((u) => u.panel === panelFilter)?.label;
 
+    const header = <PageHeader title="使うクリップを選ぶ" description="タップで採用・除外。▶ か長押しで再生。" />;
+
     if (loadError) {
         return (
-            <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 pb-[14vh] text-center">
-                <p className="text-sm text-muted">{loadError}</p>
-                <Button variant="secondary" className="h-12 px-8" onClick={retry}>
-                    もう一度読み込む
-                </Button>
+            <div className="flex flex-1 flex-col gap-6">
+                {header}
+                <LoadFailure message={loadError} onRetry={retry} />
             </div>
         );
     }
     if (!data) {
-        return <p className="pt-8 text-center text-sm text-muted">読み込んでいます…</p>;
+        return (
+            <div className="flex flex-1 flex-col gap-6">
+                {header}
+                <Loading />
+            </div>
+        );
     }
     if (data.clips.length === 0) {
         // 動画がまだ無ければ、取り込む画面から始める
@@ -119,58 +128,53 @@ export default function ClipsPage() {
     const seconds = selected.reduce((sum, c) => sum + c.duration, 0) / data.project.speed;
 
     return (
-        <div className="flex flex-1 flex-col">
-            <div className="flex items-center justify-between gap-2 pb-3 pt-1">
-                <h1 className="text-xl font-semibold text-ink">使うクリップを選ぶ</h1>
-                <div className="flex shrink-0 gap-1">
-                    <Button variant="text" size="sm" className="h-11 px-3" disabled={bulkBusy} onClick={() => void selectAll(true)}>
+        <div className="flex flex-1 flex-col gap-6">
+            {header}
+
+            <div className="flex flex-col gap-2">
+                {users.length > 1 && (
+                    <FormField label="表示するユーザー" as="fieldset">
+                        <RadioGroup
+                            name="user"
+                            direction="horizontal"
+                            value={panelFilter === null ? "all" : String(panelFilter)}
+                            onChange={(value) => setPanelFilter(value === "all" ? null : Number(value))}
+                            options={[{ panel: null, label: "全員", count: data.clips.length }, ...users].map((user) => ({
+                                value: user.panel === null ? "all" : String(user.panel),
+                                label: (
+                                    <>
+                                        {user.label}
+                                        <span className="nums text-text-muted">（{user.count}）</span>
+                                    </>
+                                ),
+                            }))}
+                        />
+                    </FormField>
+                )}
+                {/* 一括の操作。絞り込んでいるときは、表示しているユーザーだけに効く */}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+                    <Button variant="text" size="sm" disabled={bulkBusy} onClick={() => void selectAll(true)}>
                         全選択
                     </Button>
-                    <Button variant="text" size="sm" className="h-11 px-3" disabled={bulkBusy} onClick={() => void selectAll(false)}>
+                    <Button variant="text" size="sm" disabled={bulkBusy} onClick={() => void selectAll(false)}>
                         全解除
                     </Button>
-                </div>
-            </div>
-            <p className="pb-3 text-sm text-muted">タップで採用・除外を切り替えます。長押しか ▶ で再生します。</p>
-
-            {users.length > 1 && (
-                <div className="flex flex-col gap-2 pb-4">
-                    <div role="radiogroup" aria-label="表示するユーザー" className="flex flex-wrap gap-2">
-                        {[{ panel: null, label: "全員", count: data.clips.length }, ...users].map((user) => {
-                            const checked = user.panel === panelFilter;
-                            return (
-                                <button
-                                    key={user.label}
-                                    type="button"
-                                    role="radio"
-                                    aria-checked={checked}
-                                    onClick={() => setPanelFilter(user.panel)}
-                                    className={`flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
-                                        checked ? "border-brand bg-nav-active text-nav-ink" : "border-control-border bg-surface text-ink hover:bg-surface-2"
-                                    }`}
-                                >
-                                    {user.label}
-                                    <span className={`tabular-nums ${checked ? "text-nav-ink" : "text-muted"}`}>{user.count}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
                     {filterLabel && (
-                        <Button variant="tonal" size="sm" className="h-11 self-start px-4" disabled={bulkBusy} onClick={() => void selectAll(true, true)}>
+                        <Button variant="outline" size="sm" disabled={bulkBusy} onClick={() => void selectAll(true, true)}>
                             {filterLabel}だけ使う
                         </Button>
                     )}
                 </div>
-            )}
+            </div>
 
-            <div className="flex flex-col gap-6 pb-4">
+            <div className="flex flex-col gap-8 pb-4">
                 {sections.map((section) => (
-                    <section key={section.video} aria-label={section.title}>
-                        <h2 className="flex items-baseline justify-between gap-2 pb-2">
-                            <span className="text-base font-semibold text-ink">{section.title}</span>
-                            <span className="truncate text-xs text-muted">{section.subtitle}</span>
+                    <section key={section.video} aria-label={section.title} className="flex flex-col gap-3">
+                        <h2 className="m-0 flex min-w-0 items-baseline justify-between gap-2">
+                            <span className="text-std-20B-150 text-text-strong">{section.title}</span>
+                            <span className="truncate text-16 font-normal text-text-muted">{section.subtitle}</span>
                         </h2>
-                        <ul className="grid grid-cols-2 gap-3">
+                        <ul className="m-0 grid list-none grid-cols-2 gap-3 p-0">
                             {section.clips.map((clip) => (
                                 <ClipTile key={clip.id} clip={clip} onToggle={toggle} onPlay={setPlaying} />
                             ))}
@@ -180,18 +184,19 @@ export default function ClipsPage() {
             </div>
 
             <BottomBar
+                back={{ label: "動画", onClick: () => navigate("/videos") }}
                 summary={
                     selected.length > 0 ? (
                         <>
-                            <span className="font-semibold tabular-nums text-ink">{selected.length}</span> 件を選択・約{" "}
-                            {formatSeconds(seconds)}（{data.project.speed}x）
+                            <span className="nums font-bold text-text-strong">{selected.length}</span> 件を選択・約 {formatSeconds(seconds)}（
+                            {data.project.speed}x）
                         </>
                     ) : (
                         "1 件以上選んでください"
                     )
                 }
             >
-                <Button className={PRIMARY_ACTION} disabled={selected.length === 0} onClick={() => navigate("/settings")}>
+                <Button {...PRIMARY_ACTION} disabled={selected.length === 0} onClick={() => navigate("/settings")}>
                     次へ
                 </Button>
             </BottomBar>

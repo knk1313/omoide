@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "@/App";
 
@@ -8,4 +8,11 @@ export function renderApp(path: string) {
     const user = userEvent.setup();
     const result = render(<App />);
     return { user, ...result };
+}
+
+/** 手順のナビゲーションで、今いる手順（aria-current="step"）の項目。 */
+export function currentStep(): HTMLElement {
+    const current = screen.getByRole("navigation", { name: "手順" }).querySelector<HTMLElement>('[aria-current="step"]');
+    if (!current) throw new Error("今いる手順が示されていません");
+    return current;
 }

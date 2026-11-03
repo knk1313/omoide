@@ -111,6 +111,8 @@ export const api = {
     selectAll: (selected: boolean, options: { panel?: number; only?: boolean } = {}) =>
         request<Project>("POST", "/api/clips/select-all", { selected, ...options }),
     setSpeed: (speed: Speed) => request<Project>("PATCH", "/api/settings", { speed }),
+    /** 取り込んだ動画を消す。元の動画ファイルと、そこから作ったものも Mac から消える。 */
+    deleteVideo: (name: string) => request<Project>("DELETE", `/api/videos/${encodeURIComponent(name)}`),
     setVideoDate: (name: string, date: string | null) =>
         request<Video>("PATCH", `/api/videos/${encodeURIComponent(name)}`, { date }),
     startJob: (kind: Exclude<JobKind, "analyze">) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),

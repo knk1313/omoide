@@ -4,6 +4,7 @@ API ではパネルを ID で指定させ、ファイルのパスはここで ID
 """
 
 import hashlib
+from datetime import date
 import json
 import shutil
 import threading
@@ -86,6 +87,24 @@ class Workspace:
             others = [s for s in self.scans if s.info.path.stem != scan.info.path.stem]
             self._arrange([*others, scan])
 
+    def remove_video(self, name: str) -> None:
+        """取り込んだ動画を消す。元の動画ファイル・サムネイル・パネル単体の動画と、その動画の除外と撮影日の記録も消す。
+
+        存在しない動画名なら KeyError。
+        """
+        with self._project_lock:
+            scan = self.find_video(name)
+            self._arrange([s for s in self.scans if s is not scan])
+            self.project.excluded = {ref for ref in self.project.excluded if not ref.startswith(f"{name}/")}
+            self.project.video_dates.pop(name, None)
+            save_project(self.project, self._project_path)
+        key = video_key(scan.info)
+        shutil.rmtree(self._thumbnail_dir / key, ignore_errors=True)
+        with self._media_lock:
+            for folder in self._clip_dir.glob(f"{key}-*"):
+                shutil.rmtree(folder, ignore_errors=True)
+        scan.info.path.unlink(missing_ok=True)
+
     def find_video(self, name: str) -> VideoScan:
         """存在しない動画名なら KeyError。"""
         for scan in self.scans:
@@ -93,18 +112,30 @@ class Workspace:
                 return scan
         raise KeyError(name)
 
-    def set_video_date(self, name: str, value: str | None) -> None:
-        """撮影日を入力する。None なら入力を消し、メタデータの日付に戻す。形が正しくなければ ValueError。"""
+    def set_video_date(self, name: str, value: str | None, today: date | None = None) -> None:
+        """撮影日を入力する。None なら入力を消し、メタデータの日付に戻す。
+
+        形が正しくない・明日以降なら ValueError、ほかの動画の撮影日と同じなら DateConflict。
+        """
         scan = self.find_video(name)
-        if value is not None and not is_date(value):
-            raise ValueError("日付は 2026-09-19 の形で入力してください")
         with self._project_lock:
+            if value is not None:
+                check_video_date(value, name, self.project.video_dates, today or date.today())
             if value is None:
                 self.project.video_dates.pop(scan.info.path.stem, None)
             else:
                 self.project.video_dates[scan.info.path.stem] = value
             save_project(self.project, self._project_path)
             self._arrange(self.scans)
+
+    def find_same_file(self, path: Path) -> str | None:
+        """取り込み済みの動画に、中身が同じファイルがあればその名前。"""
+        target = file_fingerprint(path)
+        for scan in self.scans:
+            other = scan.info.path
+            if other.resolve() != path.resolve() and other.is_file() and file_fingerprint(other) == target:
+                return other.stem
+        return None
 
     def video_json(self, scan: VideoScan) -> dict:
         return {
@@ -207,3 +238,39 @@ def _media_key(entry: PanelEntry) -> str:
     # 動画の差し替えや解析ロジックの変更で区間が変わったら、別のフォルダに作り直す
     stamp = json.dumps({**file_stamp(entry.scan.info), "cache": CACHE_VERSION}, sort_keys=True)
     return f"{video_key(entry.scan.info)}-{hashlib.sha256(stamp.encode()).hexdigest()[:8]}"
+
+
+class DateConflict(ValueError):
+    """入力した撮影日が、ほかの動画の撮影日と同じ。"""
+
+
+def format_day(value: date) -> str:
+    return f"{value.year}年{value.month}月{value.day}日"
+
+
+def check_video_date(value: str, name: str, entered: dict[str, str], today: date) -> None:
+    """撮影日として受け付けられるかを確かめる。だめなら、次に取る操作を書いた ValueError（重複は DateConflict）。"""
+    if not is_date(value):
+        raise ValueError("日付は 2026-09-19 の形で入力してください")
+    if date.fromisoformat(value) > today:
+        raise ValueError(f"明日以降の日付は入力できません。{format_day(today)}までの、撮影した日を入力してください")
+    for other, other_date in entered.items():
+        if other != name and other_date == value:
+            raise DateConflict(
+                f"{format_day(date.fromisoformat(value))}は「{other}」の撮影日になっています。別の日付を入力するか、先に「{other}」の日付を直してください"
+            )
+
+
+_FINGERPRINT_CHUNK = 1024 * 1024
+
+
+def file_fingerprint(path: Path) -> tuple[int, str]:
+    """ファイルの大きさと、先頭・末尾 1 MiB のハッシュ。同じ動画をもう一度送ったことを、全体を読まずに見分ける。"""
+    size = path.stat().st_size
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        digest.update(f.read(_FINGERPRINT_CHUNK))
+        if size > _FINGERPRINT_CHUNK:
+            f.seek(max(size - _FINGERPRINT_CHUNK, _FINGERPRINT_CHUNK))
+            digest.update(f.read())
+    return size, digest.hexdigest()

@@ -165,6 +165,12 @@ class JobManager:
 
     def _analyze(self, job: Job, analyze: "Analyzer") -> None:
         job.status = "running"
+        # 同じ動画をもう一度送ったときは、別の動画として増やさない
+        same = self._workspace.find_same_file(job.path)
+        if same is not None:
+            job.path.unlink(missing_ok=True)
+            job.status, job.error = "failed", f"この動画は「{same}」として取り込み済みです。別の動画を選んでください"
+            return
         try:
             scan = analyze(job.path)
             # サムネイルは、配信する Workspace と同じ場所に作る。失敗しても進行中のまま残らないよう、ここで受け止める
@@ -181,6 +187,11 @@ class JobManager:
         self._workspace.add_scan(scan)
         job.result = self._workspace.video_json(scan)
         job.progress, job.status = 1.0, "done"
+
+    def generating(self) -> bool:
+        """プレビューか完成版を作っている途中か。"""
+        with self._lock:
+            return any(job.kind in ("preview", "export") and job.active for job in self._jobs.values())
 
     def get(self, job_id: str) -> Job:
         """存在しない ID なら KeyError。"""
