@@ -58,12 +58,19 @@ Pythonのテストは標準ライブラリの`unittest`で書く。
 
 ## CI
 
-GitHub Actionsが、pushとPRのたびに`.github/workflows/ci.yml`を実行する。ジョブは次の二つ。
+GitHub Actionsが、pushとPRのたびに次の二つのワークフローを実行する。それぞれ、関係するファイルが変わったときだけ動く。
 
-- `check`：`web/`で`npm run check`と`npm run build`を実行する
-- `python`：FFmpegを入れ、`.python-version`のPythonで`tests/`の`unittest`を実行する
+| ワークフロー | 実行する内容 | 動く条件 |
+| --- | --- | --- |
+| `.github/workflows/python.yml` | FFmpegを入れ、`.python-version`のPythonで`tests/`の`unittest`を実行する | `setlog_join/`、`tests/`、`main.py`、`requirements.txt`、`.python-version`の変更 |
+| `.github/workflows/web.yml` | `web/`で`npm run check`と`npm run build`を実行する | `web/`の変更 |
 
-どちらかが失敗すると、CIが失敗する。Pythonのバージョンを変えるときは`.python-version`を書き換える。
+- どちらも、ワークフロー自身のファイルを変えたときにも動く
+- `docs/`やREADMEだけの変更では、どちらも動かない
+- `web/node_modules`はキャッシュし、`package-lock.json`と`.nvmrc`が変わったときだけ`npm ci`を実行する
+- PRに続けてpushしたときは、前の実行を止める。`main`へのpushは止めない
+- 新しいPythonのファイルやフォルダを足したときは、`python.yml`の`paths`に加える
+- Pythonのバージョンを変えるときは`.python-version`を書き換える
 
 ## 出典
 
