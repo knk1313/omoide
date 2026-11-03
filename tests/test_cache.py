@@ -18,7 +18,7 @@ def _fake_scan(info: VideoInfo) -> VideoScan:
         panels=panels,
         clips=[
             ScannedClip(Clip(1, 0.0, 2.066666666666667), [panels[0]]),
-            ScannedClip(Clip(2, 2.066666666666667, 4.0), [panels[1], panels[2]]),
+            ScannedClip(Clip(2, 2.066666666666667, 4.0), [panels[1], panels[2]], {1: (0, 1)}),
         ],
     )
 

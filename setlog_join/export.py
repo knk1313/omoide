@@ -19,7 +19,7 @@ def export_video(scan: VideoScan, export_dir: Path) -> None:
     for scanned in scan.clips:
         for panel in scanned.filled:
             out = video_dir / f"{scanned.clip.index:03d}-{panel.position + 1}.mp4"
-            export_panel_clip(scan.info, scanned.clip, panel, out)
+            export_panel_clip(scan.info, scan.panel_clip(scanned, panel), panel, out)
 
 
 def export_panel_clip(

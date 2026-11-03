@@ -58,7 +58,7 @@ def resolve_segments(scans: list[VideoScan], refs: list[PanelRef] | None) -> lis
     """
     if refs is None:
         segments = [
-            Segment(scan.info, scanned.clip, panel)
+            Segment(scan.info, scan.panel_clip(scanned, panel), panel)
             for scan in scans
             for scanned in scan.clips
             for panel in scanned.filled
@@ -119,7 +119,7 @@ def _lookup(scans: list[VideoScan], refs: list[PanelRef]) -> list[Segment]:
         elif panel not in scanned.filled:
             problems.append(f"{ref}: 中身のないパネルです")
         else:
-            segments.append(Segment(scan.info, scanned.clip, panel))
+            segments.append(Segment(scan.info, scan.panel_clip(scanned, panel), panel))
     if problems:
         raise SelectionError(problems)
     # 同じパネルを 2 回指定しても 1 回だけ使う

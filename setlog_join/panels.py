@@ -4,6 +4,7 @@ Setlog の書き出しは、黒背景の上に角丸のカードが余白付き�
 その日の動画が無い人のカードは、無地のグレーに時刻と「zZ」だけが表示される。
 """
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -19,6 +20,10 @@ _BACKGROUND_MAX = 8
 # 中央値から外れた画素がこの割合未満なら、時刻と zZ だけの空カードとみなす
 _EMPTY_RATIO = 0.05
 _EMPTY_TOLERANCE = 12
+# カードの中身がこの輝度以下なら、映像が描かれていない黒いフレームとみなす
+_BLACK_MAX = 3
+# 黒いフレームとして削るのは、パネルの先頭と末尾それぞれこのフレーム数まで。暗い映像を削りすぎないため
+MAX_BLACK_EDGE_FRAMES = 3
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,33 @@ def is_empty(frame: np.ndarray, panel: Panel) -> bool:
     region = panel.region(frame).astype(np.int16)
     off = np.abs(region - np.median(region)) > _EMPTY_TOLERANCE
     return off.mean() < _EMPTY_RATIO
+
+
+def black_edges(small_frames: np.ndarray, panel: Panel, frame_width: int, frame_height: int,
+                start: int, end: int) -> tuple[int, int]:
+    """フレーム start〜end-1 のうち、パネルの先頭と末尾に続く黒いフレームの数を返す。
+
+    Setlog では、ある人の素材がほかの人より短いと、カードの中身が描かれず黒いまま書き出される。
+    small_frames は縮小した全フレーム。パネルの位置は元の解像度 (frame_width x frame_height) で渡す。
+    """
+    rows, cols = small_frames.shape[1:]
+    # 縮小で枠の外の背景が混ざらないよう、内側に切り詰める
+    x0 = math.ceil(panel.x * cols / frame_width) + 1
+    x1 = (panel.x + panel.width) * cols // frame_width - 1
+    y0 = math.ceil(panel.y * rows / frame_height) + 1
+    y1 = (panel.y + panel.height) * rows // frame_height - 1
+    region = small_frames[start:end, y0:y1, x0:x1].reshape(end - start, -1)
+    black = np.median(region, axis=1) <= _BLACK_MAX
+
+    limit = min(MAX_BLACK_EDGE_FRAMES, (end - start - 1) // 2)
+    return _leading_true(black, limit), _leading_true(black[::-1], limit)
+
+
+def _leading_true(flags: np.ndarray, limit: int) -> int:
+    count = 0
+    while count < limit and flags[count]:
+        count += 1
+    return count
 
 
 def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
