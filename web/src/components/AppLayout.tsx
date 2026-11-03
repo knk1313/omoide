@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from "react-router";
 import { appConfig, steps } from "@/app.config";
+import { useSession } from "@/session/Session";
 import { ToastProvider } from "./Toast";
 import { ConfirmProvider } from "./ConfirmDialog";
 
@@ -7,7 +8,9 @@ import { ConfirmProvider } from "./ConfirmDialog";
 // 幅の広い画面でも、スマホの幅（max-w-md）で中央に寄せる。
 export default function AppLayout() {
     const { pathname } = useLocation();
-    const current = steps.findIndex((step) => step.path === pathname);
+    const { status } = useSession();
+    // 手順はログインした後にだけ見せる。QR コードの案内やパスワード画面では出さない
+    const current = status === "ready" ? steps.findIndex((step) => step.path === pathname) : -1;
     const Logo = appConfig.logo;
 
     return (
