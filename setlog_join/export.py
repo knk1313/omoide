@@ -1,6 +1,7 @@
 """中身のあるパネルを、クリップごとの動画として書き出す。"""
 
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
 
 from . import ffmpeg
@@ -21,12 +22,15 @@ def export_video(scan: VideoScan, export_dir: Path) -> None:
             export_panel_clip(scan.info, scanned.clip, panel, out)
 
 
-def export_panel_clip(info: VideoInfo, clip: Clip, panel: Panel, out_path: Path) -> None:
+def export_panel_clip(
+    info: VideoInfo, clip: Clip, panel: Panel, out_path: Path, filters: Sequence[str] = (),
+) -> None:
+    """パネルを切り出して書き出す。filters は切り出しの後に続けて掛ける映像フィルタ。"""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ffmpeg.run(
         "-y",
         "-ss", f"{clip.start:.3f}", "-t", f"{clip.duration:.3f}", "-i", str(info.path),
-        "-vf", panel.crop_filter, "-an",
+        "-vf", ",".join([panel.crop_filter, *filters]), "-an",
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
         str(out_path),
     )

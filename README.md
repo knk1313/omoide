@@ -15,12 +15,17 @@ python3 -m venv .venv
 # input/ に Setlog の書き出し動画 (MP4 / MOV) を置いて実行
 .venv/bin/python main.py scan            # クリップと中身のあるパネルを一覧表示
 .venv/bin/python main.py scan --export   # 中身のあるパネルを output/<動画名>/ に書き出す
+
+# パネルをつないで 1 本の動画にする (output/omoide-<日時>.mp4)
+.venv/bin/python main.py join --speed 1.5                     # 中身のあるパネルをすべて使う
+.venv/bin/python main.py join --select collection_export/001-1,collection_export/002-3
 ```
 
 - 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
 - 約 2 秒ごとのクリップ境界を検出する
 - 縦に 3 段並んだカードを検出し、余白と角丸を除いて切り出す
 - 時刻と zZ だけの空カードは除外する
+- `join` は上の人の全クリップ（時系列）→ 中の人 → 下の人の順につなぐ。速度は `0.5` / `1` / `1.5` / `2`
 
 `input/` と `output/` の中身は Git 管理外。
 
