@@ -135,6 +135,7 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     import uvicorn
 
     from .server import WEB_DIST, create_app
+    from .workspace import Workspace
 
     try:
         host = resolve_host(host)
@@ -175,7 +176,8 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     # uvicorn が動き出すと戻らないので、案内を先に出し切る
     print("同じ Wi-Fi に接続したスマホで QR コードを読み取ってください。終了するには Ctrl+C を押してください。", flush=True)
 
-    server = uvicorn.Server(uvicorn.Config(create_app(scans, auth), host=host, port=port, log_level="warning"))
+    app = create_app(Workspace(scans), auth)
+    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
     expiry = threading.Timer(lifetime, lambda: setattr(server, "should_exit", True))
     expiry.daemon = True
     expiry.start()
