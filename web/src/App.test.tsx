@@ -1,0 +1,42 @@
+import { screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { renderApp } from "@/test/renderApp";
+
+describe("画面の骨組み", () => {
+    it("クリップ選択から速度、プレビューへ順に進める", async () => {
+        const { user } = renderApp("/");
+        expect(screen.getByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
+        expect(screen.getByText("1. 選ぶ")).toHaveAttribute("aria-current", "step");
+
+        await user.click(screen.getByRole("button", { name: "次へ" }));
+        expect(screen.getByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
+        expect(screen.getByText("2. 速度")).toHaveAttribute("aria-current", "step");
+
+        await user.click(screen.getByRole("button", { name: "プレビューへ" }));
+        expect(screen.getByRole("heading", { name: "プレビューを確認" })).toBeInTheDocument();
+        expect(screen.getByText("3. 確認")).toHaveAttribute("aria-current", "step");
+
+        await user.click(screen.getByRole("button", { name: "速度を変える" }));
+        expect(screen.getByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
+    });
+
+    it("ログイン画面には手順を表示しない", () => {
+        renderApp("/login");
+        expect(screen.getByRole("heading", { name: "パスワードを入力" })).toBeInTheDocument();
+        expect(screen.queryByRole("list", { name: "手順" })).not.toBeInTheDocument();
+    });
+
+    it("存在しない URL は 404 を表示し、クリップ選択へ戻れる", async () => {
+        const { user } = renderApp("/nope");
+        expect(screen.getByText("ページが見つかりません")).toBeInTheDocument();
+        await user.click(screen.getByRole("link", { name: "クリップ選択へ戻る" }));
+        expect(screen.getByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
+    });
+
+    it("管理画面のテンプレートの要素は残っていない", () => {
+        renderApp("/");
+        for (const name of ["ダッシュボード", "ドキュメント", "Sample Workspace"]) {
+            expect(screen.queryByText(name)).not.toBeInTheDocument();
+        }
+    });
+});
