@@ -35,8 +35,6 @@ function statusOf(error: unknown): SessionStatus | null {
     if (!(error instanceof ApiError)) return null;
     if (error.status === 0) return "offline";
     if (error.status === 401) return "login";
-    // 入場用の Cookie が無いと、サーバーはどのパスにも 404 を返す
-    if (error.status === 404) return "no-share";
     if (error.status === 410) return "expired";
     return null;
 }
@@ -48,7 +46,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         let active = true;
         api.health()
             .then(() => active && setStatus("ready"))
-            .catch((error: unknown) => active && setStatus(statusOf(error) ?? "offline"));
+            .catch((error: unknown) => {
+                if (!active) return;
+                // 入場用の Cookie が無いと、サーバーはどのパスにも 404 を返す。
+                // 404 で見分けるのはこの確認だけにする（API は存在しないパネルにも 404 を返すため）
+                setStatus(error instanceof ApiError && error.status === 404 ? "no-share" : (statusOf(error) ?? "offline"));
+            });
         return () => {
             active = false;
         };
