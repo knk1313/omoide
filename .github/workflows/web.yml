@@ -54,6 +54,14 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('web/.nvmrc', 'web/package-lock.json') }}
       - if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # ブラウザは Playwright の版ごとにキャッシュする。ヘッドレスで動かすので、画面付きの Chromium は入れない
+      - id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # キャッシュがあればダウンロードは飛ばし、OS のライブラリだけを入れる
+      - run: npx playwright install --with-deps --only-shell chromium
       # 主な画面の表示・操作・axe（スマホとデスクトップの 2 幅）。API は e2e/mockServer.ts が代わりに応える
       - run: npm run test:e2e

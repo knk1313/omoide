@@ -10,6 +10,8 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
+    // CI のランナー（4 コア）では、既定の半分（2 並列）だと待ち時間が長いので、コアの数だけ並べる
+    workers: process.env.CI ? "100%" : undefined,
     reporter: process.env.CI ? [["github"], ["list"]] : "list",
     use: {
         baseURL: "http://localhost:4317",
