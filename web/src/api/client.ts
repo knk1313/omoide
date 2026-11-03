@@ -64,7 +64,9 @@ export const api = {
     setSelected: (id: string, selected: boolean) =>
         // ID の「/」は API のパスの区切りとしてそのまま渡す（docs/api.md）
         request<PanelClip>("PATCH", `/api/clips/${id.split("/").map(encodeURIComponent).join("/")}`, { selected }),
-    selectAll: (selected: boolean) => request<Project>("POST", "/api/clips/select-all", { selected }),
+    /** まとめて採用・除外する。panel でユーザーを絞り、only なら対象以外を除外する。 */
+    selectAll: (selected: boolean, options: { panel?: number; only?: boolean } = {}) =>
+        request<Project>("POST", "/api/clips/select-all", { selected, ...options }),
     setSpeed: (speed: Speed) => request<Project>("PATCH", "/api/settings", { speed }),
     startJob: (kind: JobKind) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
     job: (id: string) => request<Job>("GET", `/api/jobs/${encodeURIComponent(id)}`),

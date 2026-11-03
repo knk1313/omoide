@@ -22,6 +22,8 @@ export default function ClipsPage() {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [playing, setPlaying] = useState<PanelClip | null>(null);
     const [bulkBusy, setBulkBusy] = useState(false);
+    // 表示するユーザー（上から 1・2・3）。null なら全員
+    const [panelFilter, setPanelFilter] = useState<number | null>(null);
 
     // 「もう一度読み込む」で増やし、読み込みをやり直す
     const [attempt, setAttempt] = useState(0);
@@ -65,13 +67,22 @@ export default function ClipsPage() {
         [setSelected, handleError, toast],
     );
 
-    async function selectAll(selected: boolean) {
+    // 絞り込んでいるときは、表示しているユーザーだけを対象にする。only なら、それ以外のユーザーを除外する
+    async function selectAll(selected: boolean, only = false) {
         if (!data) return;
         const before = data.clips;
+        const panel = panelFilter;
         setBulkBusy(true);
-        setSelected("all", selected);
+        setData((prev) =>
+            prev && {
+                ...prev,
+                clips: prev.clips.map((c) =>
+                    panel === null || c.panel === panel ? { ...c, selected } : only ? { ...c, selected: false } : c,
+                ),
+            },
+        );
         try {
-            await api.selectAll(selected);
+            await api.selectAll(selected, panel === null ? {} : { panel, only });
         } catch (error) {
             setData((prev) => prev && { ...prev, clips: before });
             if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
@@ -80,7 +91,12 @@ export default function ClipsPage() {
         }
     }
 
-    const sections = useMemo(() => groupByVideo(data), [data]);
+    const users = useMemo(() => listUsers(data), [data]);
+    const sections = useMemo(
+        () => groupByVideo(data && { ...data, clips: data.clips.filter((c) => panelFilter === null || c.panel === panelFilter) }),
+        [data, panelFilter],
+    );
+    const filterLabel = users.find((u) => u.panel === panelFilter)?.label;
 
     if (loadError) {
         return (
@@ -124,6 +140,36 @@ export default function ClipsPage() {
             </div>
             <p className="pb-3 text-sm text-muted">タップで採用・除外を切り替えます。長押しか ▶ で再生します。</p>
 
+            {users.length > 1 && (
+                <div className="flex flex-col gap-2 pb-4">
+                    <div role="radiogroup" aria-label="表示するユーザー" className="flex flex-wrap gap-2">
+                        {[{ panel: null, label: "全員", count: data.clips.length }, ...users].map((user) => {
+                            const checked = user.panel === panelFilter;
+                            return (
+                                <button
+                                    key={user.label}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={checked}
+                                    onClick={() => setPanelFilter(user.panel)}
+                                    className={`flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                                        checked ? "border-brand bg-nav-active text-nav-ink" : "border-control-border bg-surface text-ink hover:bg-surface-2"
+                                    }`}
+                                >
+                                    {user.label}
+                                    <span className={`tabular-nums ${checked ? "text-nav-ink" : "text-muted"}`}>{user.count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {filterLabel && (
+                        <Button variant="tonal" size="sm" className="h-11 self-start px-4" disabled={bulkBusy} onClick={() => void selectAll(true, true)}>
+                            {filterLabel}だけ使う
+                        </Button>
+                    )}
+                </div>
+            )}
+
             <div className="flex flex-col gap-6 pb-4">
                 {sections.map((section) => (
                     <section key={section.video} aria-label={section.title}>
@@ -160,6 +206,20 @@ export default function ClipsPage() {
             {playing && <ClipPlayer clip={playing} onClose={() => setPlaying(null)} />}
         </div>
     );
+}
+
+type User = { panel: number; label: string; count: number };
+
+// 中身のあるパネルを持つユーザー（上から 1・2・3）と、その数
+function listUsers(data: Loaded | null): User[] {
+    if (!data) return [];
+    const users = new Map<number, User>();
+    for (const clip of data.clips) {
+        const user = users.get(clip.panel) ?? { panel: clip.panel, label: clip.label, count: 0 };
+        user.count += 1;
+        users.set(clip.panel, user);
+    }
+    return [...users.values()].sort((a, b) => a.panel - b.panel);
 }
 
 type Section = { video: string; title: string; subtitle: string; clips: PanelClip[] };

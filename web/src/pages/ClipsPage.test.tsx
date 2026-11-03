@@ -14,6 +14,9 @@ async function openClips(routes: Parameters<typeof fakeServer>[0] = {}) {
 // 下の帯の要約（「2 件を選択・約 4秒（1x）」）
 const summary = () => screen.getByText((_, el) => el?.tagName === "P" && /件を選択/.test(el.textContent ?? ""));
 
+// 採用・除外を切り替えるタイル（aria-pressed を持つボタン）だけ
+const tiles = () => screen.getAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"));
+
 const tile = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}（`) });
 
 describe("クリップ選択画面", () => {
@@ -74,6 +77,53 @@ describe("クリップ選択画面", () => {
         await user.click(selectAll);
         expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(3);
         expect(screen.getByRole("button", { name: "次へ" })).toBeEnabled();
+    });
+
+    it("ユーザーで絞り込める", async () => {
+        const { user } = await openClips();
+        const filter = screen.getByRole("radiogroup", { name: "表示するユーザー" });
+        expect(within(filter).getAllByRole("radio").map((r) => r.textContent)).toEqual(["全員3", "ユーザー11", "ユーザー21", "ユーザー31"]);
+
+        await user.click(within(filter).getByRole("radio", { name: /^ユーザー2/ }));
+        expect(within(filter).getByRole("radio", { name: /^ユーザー2/ })).toHaveAttribute("aria-checked", "true");
+        expect(tiles().map((b) => b.getAttribute("aria-label"))).toEqual([
+            "ユーザー2・クリップ 1（採用）",
+        ]);
+        // 表示していない動画の見出しは出さない
+        expect(screen.queryByRole("region", { name: "oct" })).not.toBeInTheDocument();
+
+        await user.click(within(filter).getByRole("radio", { name: /^全員/ }));
+        expect(tiles()).toHaveLength(3);
+    });
+
+    it("絞り込んでいるときの全解除は、そのユーザーだけに効く", async () => {
+        const { server, user } = await openClips({ "POST /api/clips/select-all": { status: 200 } });
+        await user.click(screen.getByRole("radio", { name: /^ユーザー2/ }));
+        await user.click(screen.getByRole("button", { name: "全解除" }));
+        expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: false, panel: 2, only: false } });
+
+        await user.click(screen.getByRole("radio", { name: /^全員/ }));
+        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "false");
+        // ほかのユーザーはそのまま
+        expect(tile("ユーザー1・クリップ 1")).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("「ユーザー3だけ使う」で、そのユーザーを採用し、ほかを除外する", async () => {
+        const { server, user } = await openClips({ "POST /api/clips/select-all": { status: 200 } });
+        await user.click(screen.getByRole("radio", { name: /^ユーザー3/ }));
+        await user.click(screen.getByRole("button", { name: "ユーザー3だけ使う" }));
+        expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: true, panel: 3, only: true } });
+
+        await user.click(screen.getByRole("radio", { name: /^全員/ }));
+        expect(tile("ユーザー3・クリップ 2")).toHaveAttribute("aria-pressed", "true");
+        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "false");
+        expect(tile("ユーザー1・クリップ 1")).toHaveAttribute("aria-pressed", "false");
+        expect(summary()).toHaveTextContent("1 件を選択");
+    });
+
+    it("絞り込んでいないときは「だけ使う」を出さない", async () => {
+        await openClips();
+        expect(screen.queryByRole("button", { name: /だけ使う/ })).not.toBeInTheDocument();
     });
 
     it("再生ボタンで、そのパネルだけをその場で再生する", async () => {
