@@ -77,10 +77,19 @@ class Workspace:
             self.project.set_selected(entry.ref, selected)
             save_project(self.project, self._project_path)
 
-    def select_all(self, selected: bool) -> None:
+    def select_all(self, selected: bool, panel: int | None = None, only: bool = False) -> None:
+        """まとめて採用・除外する。
+
+        panel を渡すと、そのユーザー（上から 1・2・3）のパネルだけを対象にする。
+        only=True なら、対象を採用し、それ以外を除外する（「ユーザー1だけ使う」）。
+        """
         with self._project_lock:
             for entry in self.entries.values():
-                self.project.set_selected(entry.ref, selected)
+                target = panel is None or entry.ref.panel == panel
+                if target:
+                    self.project.set_selected(entry.ref, selected)
+                elif only:
+                    self.project.set_selected(entry.ref, False)
             save_project(self.project, self._project_path)
 
     def set_speed(self, speed: float) -> None:

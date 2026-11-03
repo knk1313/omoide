@@ -48,6 +48,14 @@ class SelectionRequest(BaseModel):
     selected: bool
 
 
+class BulkSelectionRequest(BaseModel):
+    selected: bool
+    # 上から 1・2・3。省略すると全員
+    panel: int | None = Field(default=None, ge=1, le=3)
+    # True なら、対象のユーザーを採用し、それ以外を除外する
+    only: bool = False
+
+
 class SettingsRequest(BaseModel):
     speed: float
 
@@ -125,8 +133,8 @@ def create_app(
         return _clip_json(workspace, entry)
 
     @app.post("/api/clips/select-all")
-    def select_all(body: SelectionRequest) -> dict:
-        workspace.select_all(body.selected)
+    def select_all(body: BulkSelectionRequest) -> dict:
+        workspace.select_all(body.selected, panel=body.panel, only=body.only)
         return workspace.summary()
 
     @app.patch("/api/settings")

@@ -25,7 +25,7 @@
 | `GET /api/project` | 速度、パネルの総数と採用数、推定時間（秒）、動画の一覧 | なし |
 | `GET /api/clips` | 中身のあるパネルの一覧（動画、クリップ、パネルの順） | なし |
 | `PATCH /api/clips/<ID>` | パネルを採用・除外する | `{"selected": true}` |
-| `POST /api/clips/select-all` | すべてを採用・除外する | `{"selected": false}` |
+| `POST /api/clips/select-all` | まとめて採用・除外する。`panel`（1〜3）でユーザーを絞り、`only`なら対象以外を除外する | `{"selected": true, "panel": 2, "only": true}` |
 | `PATCH /api/settings` | 速度を変える（0.5、1、1.5、2） | `{"speed": 1.5}` |
 | `GET /media/thumbnails/<ID>` | サムネイル（JPEG、幅400px） | なし |
 | `GET /media/clips/<ID>` | パネル単体の動画（MP4） | なし |

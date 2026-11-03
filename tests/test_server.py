@@ -196,6 +196,13 @@ class ClipsApiTest(ServerTestCase):
         self.assertEqual(self.client.post("/api/clips/select-all", json={"selected": False}).json()["selected_count"], 0)
         self.assertEqual(self.client.post("/api/clips/select-all", json={"selected": True}).json()["selected_count"], 3)
 
+    def test_select_all_for_one_user(self):
+        body = self.client.post("/api/clips/select-all", json={"selected": True, "panel": 2, "only": True}).json()
+        self.assertEqual(body["selected_count"], 1)
+        clips = {c["id"]: c["selected"] for c in self.client.get("/api/clips").json()}
+        self.assertEqual(clips, {"setlog/001-1": False, "setlog/001-3": False, "setlog/002-2": True})
+        self.assertEqual(self.client.post("/api/clips/select-all", json={"selected": True, "panel": 4}).status_code, 422)
+
     def test_updates_speed(self):
         body = self.client.patch("/api/settings", json={"speed": 2}).json()
         self.assertEqual(body["speed"], 2.0)
