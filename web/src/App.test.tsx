@@ -17,7 +17,7 @@ describe("画面の骨組み", () => {
         expect(screen.getByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
         expect(screen.getByText("2. 速度")).toHaveAttribute("aria-current", "step");
 
-        await user.click(screen.getByRole("button", { name: "プレビューへ" }));
+        await user.click(await screen.findByRole("button", { name: "プレビューを生成" }));
         expect(screen.getByRole("heading", { name: "プレビューを確認" })).toBeInTheDocument();
         expect(screen.getByText("3. 確認")).toHaveAttribute("aria-current", "step");
 

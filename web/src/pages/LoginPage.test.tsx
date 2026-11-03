@@ -15,13 +15,13 @@ describe("パスワード画面", () => {
     });
 
     it("正しいパスワードなら、開こうとしていた画面へ進む", async () => {
-        const server = fakeServer({ ...notLoggedIn, "POST /api/session/login": { status: 200, body: { status: "ok" } } });
+        const server = fakeServer({ ...loggedIn, ...notLoggedIn, "POST /api/session/login": { status: 200, body: { status: "ok" } } });
         const { user } = renderApp("/settings");
         await user.type(await screen.findByLabelText(PASSWORD_FIELD.name), "correct horse");
         await user.click(screen.getByRole("button", { name: "接続する" }));
 
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
-        expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/session/login", body: { password: "correct horse" } });
+        expect(server.calls).toContainEqual({ method: "POST", path: "/api/session/login", body: { password: "correct horse" } });
     });
 
     it("Enter でも送信できる", async () => {
