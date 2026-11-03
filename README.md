@@ -21,7 +21,8 @@ python3 -m venv .venv
 .venv/bin/python main.py join --select collection_export/001-1,collection_export/002-3
 
 # 同じ Wi-Fi のスマホから操作するサーバーを起動する (先に画面をビルドしておく: cd web && npm run build)
-.venv/bin/python main.py serve
+# 起動するとパスワードを聞かれ、URL と QR コードが表示される。既定では 2 時間で終了する
+.venv/bin/python main.py serve --expires 2h
 ```
 
 - 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
