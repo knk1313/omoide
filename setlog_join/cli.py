@@ -8,7 +8,8 @@ from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
 from .probe import VideoInfo
-from .scan import VideoScan, scan_video
+from .cache import load_or_scan
+from .scan import VideoScan
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,7 +51,7 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     scans = []
     for info in videos:
         try:
-            scan = scan_video(info)
+            scan = load_or_scan(info)
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
         _print_scan(scan)
@@ -80,7 +81,7 @@ def join_command(folder: Path, select: str | None, speed: float, output_dir: Pat
     scans = []
     for info in videos:
         try:
-            scans.append(scan_video(info))
+            scans.append(load_or_scan(info))
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
 
