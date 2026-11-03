@@ -1,9 +1,9 @@
 # omoide
 
-Mac に置いた Setlog の書き出し動画を自動でクリップに分割し、同じ Wi-Fi のスマホから採用するクリップを選んで、結合・速度調整・プレビュー・ダウンロードまで行うローカルファーストなツール。
+Setlogの書き出し動画を、スマホで選んで1本にまとめるツール。動画はMacに置いたまま、自動でクリップに分割する。同じWi-Fiのスマホから使うクリップを選び、速度を決めてプレビューし、完成版をダウンロードする。
 
-- **Mac**: 動画の保存・解析・変換・配信（Python + FFmpeg）
-- **スマホ**: 編集用の操作・プレビュー端末（ブラウザ、React）
+- **Mac**：動画の保存・解析・変換・配信（Python、FFmpeg）
+- **スマホ**：クリップの選択とプレビュー（ブラウザ、React）
 
 ## 使い方
 
@@ -30,24 +30,24 @@ python3 -m venv .venv
 .venv/bin/python main.py clean
 ```
 
-- 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
-- 約 2 秒ごとのクリップ境界を検出する
-- 縦に 3 段並んだカードを検出し、余白と角丸を除いて切り出す
-- 時刻と zZ だけの空カードは除外する
-- `join` は上の人の全クリップ（時系列）→ 中の人 → 下の人の順につなぐ。速度は `0.5` / `1` / `1.5` / `2`
+- 動画は、メタデータの作成日時（無ければファイルの更新日時）の順に並べる
+- 約2秒ごとのクリップの境目を検出する
+- 縦に3段並んだカードを検出し、余白と角丸を除いて切り出す
+- 時刻と「zZ」だけの空のカードは除外する
+- `join`は、上の人の全クリップ（時系列）、中の人、下の人の順につなぐ。速度は`0.5`、`1`、`1.5`、`2`から選ぶ
 
-解析結果は `.setlog-join/cache/` に保存し、動画のファイルサイズと更新日時が変わらなければ次回の解析を省く。`scan` は、中身のあるパネルごとのサムネイル（幅 400px の JPEG）も `.setlog-join/thumbnails/` に作る。
+解析結果は`.setlog-join/cache/`に保存する。動画のファイルサイズと更新日時が変わらなければ、次回は解析を省く。`scan`は、中身のあるパネルごとのサムネイル（幅640pxのJPEG）も`.setlog-join/thumbnails/`に作る。
 
-採用・除外と速度は `.setlog-join/projects/project.json` に保存する。`join` は `--select` と `--speed` を省略すると、この内容を使う。
+採用・除外と速度は`.setlog-join/projects/project.json`に保存する。`join`は、`--select`と`--speed`を省略すると、この内容を使う。
 
-`input/`・`output/`・`.setlog-join/` の中身は Git 管理外。
+`input/`・`output/`・`.setlog-join/`の中身は、Gitで管理しない。
 
 ## 使うときの注意
 
-- `serve` は、同じ Wi-Fi のスマホから見られるサーバーを Mac で開く。自宅など信頼できるネットワークで使い、カフェや駅などの公衆 Wi-Fi では使わない
-- サーバーは、起動時に決めるパスワード・QR コードの URL・有効期限（既定 2 時間）で守る。詳しくは [docs/security.md](docs/security.md) を参照
-- 動画は Mac の中だけで扱い、外部のサービスには送らない
-- Setlog の書き出し動画を前提にした個人用のツールで、Setlog とは関係がない
+- `serve`は、同じWi-Fiのスマホから見られるサーバーをMacで開く。自宅など信頼できるネットワークで使い、カフェや駅などの公衆Wi-Fiでは使わない
+- サーバーは、起動時に決めるパスワード、QRコードのURL、有効期限（既定は2時間）で守る。詳しくは[docs/security.md](docs/security.md)を参照
+- 動画はMacの中だけで扱い、外部のサービスには送らない
+- Setlogの書き出し動画を前提にした個人用のツールで、Setlogとは関係がない
 
 ## 構成
 
@@ -66,7 +66,7 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s tests
 ```
 
-`web/` の UI は、デジタル庁デザインシステム（DADS）に準拠したテンプレート [workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)（コミット `feff468`）に基づく。開発方法は [web/README.md](web/README.md) を参照。
+`web/`のUIは、デジタル庁デザインシステム（DADS）に準拠したテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)のコミット`feff468`に基づく。開発方法は[web/README.md](web/README.md)を参照。
 
 ## ライセンス
 

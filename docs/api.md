@@ -30,7 +30,7 @@
 | `PATCH /api/clips/<ID>` | パネルを採用・除外する | `{"selected": true}` |
 | `POST /api/clips/select-all` | まとめて採用・除外する。`panel`（1〜3）でユーザーを絞り、`only`なら対象以外を除外する | `{"selected": true, "panel": 2, "only": true}` |
 | `PATCH /api/settings` | 速度を変える（0.5、1、1.5、2） | `{"speed": 1.5}` |
-| `GET /media/thumbnails/<ID>` | サムネイル（JPEG、幅400px） | なし |
+| `GET /media/thumbnails/<ID>` | サムネイル（JPEG、幅640px） | なし |
 | `GET /media/clips/<ID>` | パネル単体の動画（MP4） | なし |
 | `POST /api/preview` | プレビューの生成を始める（202） | なし |
 | `POST /api/export` | 完成版の生成を始める（202） | なし |
@@ -86,7 +86,7 @@
 | 507 | Macの空き容量が足りない |
 | 409 | 生成中に一時ファイルを消そうとした（`DELETE /api/temporary`） |
 
-プレビューは幅480pxに縮小し、画質を落として速く作る。完成版は元の大きさで`output/`へ書き出す。
+プレビューは幅960pxに縮小し、画質を落として速く作る。完成版は元の大きさで`output/`へ書き出す。
 
 ## 動画の取り込み
 

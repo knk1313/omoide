@@ -1,6 +1,6 @@
 # スマホ向けUIと動画再生
 
-UIはiPhoneのSafariとAndroidのChromeの現行版を対象にし、片手で操作できることを優先する。見た目と部品は、デジタル庁デザインシステム（DADS）に準拠したテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)に合わせる（`web/README.md`）。
+UIはiPhoneのSafariとAndroidのChromeの現行版を対象にし、片手で操作できることを優先する。見た目と部品は、デジタル庁デザインシステム（DADS）に準拠したテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)のものを使う。詳しくは`web/README.md`を参照。
 
 ## 画面の作り
 

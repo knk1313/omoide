@@ -42,11 +42,15 @@ E2EはMac側のサーバーを使わず、`e2e/mockServer.ts`がAPIの代わり�
 
 ## UIのもと
 
-UIは、デジタル庁デザインシステム（DADS）に準拠したテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)に基づく。取り込んだのはコミット`feff468fb6ee3d5670e528bc0b3283dd046626fb`で、テンプレートとの差分はこのコミットと比べて追う。
+UIは、デジタル庁デザインシステム（DADS）準拠のテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)をもとにしている。取り込み元のコミットは`feff468fb6ee3d5670e528bc0b3283dd046626fb`である。テンプレートとの差分は、このコミットと比べて追う。
 
 - トークン（`src/tokens/`）、UI部品（`src/components/ui/`）、検査スクリプト（`scripts/check-design-tokens.mjs`）は、テンプレートからコピーした。omoideが使う部品だけを取り込んでいる
 - 色・文字の大きさ・寸法は、トークンのユーティリティクラスだけで書く。色コードと任意値クラス（`w-[13px]`など）の直書きは`npm run lint`で検出する
-- テンプレートにない部品（`ProgressBar`）と、omoideのために足した機能（`StepNavigation`の`size="sm"`、`NotificationBanner`の`live="assertive"`、上部に出す`Toast`）は、各ファイルの冒頭のコメントに理由を書いた
+- テンプレートにない部品（`ProgressBar`）を足した。理由は、ファイルの冒頭のコメントに書いた
+- omoideのために、テンプレートの部品に次の機能を足した。理由は、各ファイルの冒頭のコメントに書いた
+  - `StepNavigation`の`size="sm"`
+  - `NotificationBanner`の`live="assertive"`
+  - 画面の上部に出す`Toast`
 
 ## 構成
 
