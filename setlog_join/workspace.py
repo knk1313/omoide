@@ -178,7 +178,7 @@ class Workspace:
 
     def set_speed(self, speed: float) -> None:
         if speed not in SPEEDS:
-            raise ValueError(f"速度は {', '.join(f'{s:g}' for s in SPEEDS)} のどれかにしてください")
+            raise ValueError(f"速度は{', '.join(f'{s:g}' for s in SPEEDS)}のどれかにしてください")
         with self._project_lock:
             self.project.speed = speed
             save_project(self.project, self._project_path)
@@ -251,7 +251,7 @@ def format_day(value: date) -> str:
 def check_video_date(value: str, name: str, entered: dict[str, str], today: date) -> None:
     """撮影日として受け付けられるかを確かめる。だめなら、次に取る操作を書いた ValueError（重複は DateConflict）。"""
     if not is_date(value):
-        raise ValueError("日付は 2026-09-19 の形で入力してください")
+        raise ValueError("日付は2026-09-19の形で入力してください")
     if date.fromisoformat(value) > today:
         raise ValueError(f"明日以降の日付は入力できません。{format_day(today)}までの、撮影した日を入力してください")
     for other, other_date in entered.items():

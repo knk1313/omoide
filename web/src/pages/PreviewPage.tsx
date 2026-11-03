@@ -85,7 +85,7 @@ export default function PreviewPage() {
                                 label="ファイル名"
                                 id="file-name"
                                 requirement="required"
-                                supportText={`拡張子（.mp4）は自動で付きます。${FORBIDDEN_HINT} は使えません。`}
+                                supportText={`拡張子（.mp4）は自動で付きます。${FORBIDDEN_HINT}は使えません。`}
                                 errorText={fileNameError ?? undefined}
                             >
                                 <Input
@@ -102,7 +102,7 @@ export default function PreviewPage() {
                                 />
                             </FormField>
                             <p className="m-0 text-text-muted">
-                                iPhone では「ファイル」アプリの「ダウンロード」に保存されます。写真に入れるときは、ファイルを開いて共有から「ビデオを保存」を選んでください。
+                                iPhoneでは「ファイル」アプリの「ダウンロード」に保存されます。写真に入れるときは、ファイルを開いて共有から「ビデオを保存」を選んでください。
                             </p>
                         </>
                     ) : exporting ? (

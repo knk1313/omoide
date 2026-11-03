@@ -21,7 +21,7 @@ export function LoadFailure({ message, onRetry }: { message: string; onRetry: ()
             type="error"
             live="assertive"
             title={message}
-            description="Mac で serve が動いているか確かめてから、もう一度読み込んでください。"
+            description="Macでserveが動いているか確かめてから、もう一度読み込んでください。"
             actions={
                 <Button variant="outline" block onClick={onRetry}>
                     もう一度読み込む

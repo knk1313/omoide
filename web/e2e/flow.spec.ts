@@ -80,10 +80,10 @@ test("取り込んだ動画を、確かめてから消せる", async ({ page }) 
 });
 
 test("アップロードに失敗したら、理由を表示して選び直せる", async ({ page }) => {
-    await mockServer(page, { failOnce: { "POST /api/videos": [415, "MP4 か MOV の動画を選んでください"] } });
+    await mockServer(page, { failOnce: { "POST /api/videos": [415, "MP4かMOVの動画を選んでください"] } });
     await page.goto("/videos");
     await page.getByLabel("動画ファイル").setInputFiles({ name: "memo.txt", mimeType: "text/plain", buffer: Buffer.from("x") });
-    await expect(page.getByRole("alert")).toContainText("MP4 か MOV の動画を選んでください");
+    await expect(page.getByRole("alert")).toContainText("MP4かMOVの動画を選んでください");
     await expectNoAxeViolations(page, "アップロードの失敗");
     await page.getByRole("button", { name: "閉じる" }).click();
     await expect(page.getByRole("alert")).toHaveCount(0);
@@ -97,27 +97,27 @@ test("クリップを選び、ユーザーで絞り込み、再生して閉じ�
     // 入力した撮影日が見出しになる
     const september = page.getByRole("region", { name: /2026年9月20日/ });
     await expect(september).toBeVisible();
-    await expect(page.getByText(/10 件を選択/)).toBeVisible();
+    await expect(page.getByText(/10件を選択/)).toBeVisible();
 
     // タップで除外する
-    await september.getByRole("button", { name: "ユーザー1・クリップ 1（採用）" }).click();
-    await expect(september.getByRole("button", { name: "ユーザー1・クリップ 1（除外）" })).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText(/9 件を選択/)).toBeVisible();
+    await september.getByRole("button", { name: "ユーザー1・クリップ1（採用）" }).click();
+    await expect(september.getByRole("button", { name: "ユーザー1・クリップ1（除外）" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText(/9件を選択/)).toBeVisible();
     expect(calls.some((c) => c.method === "PATCH" && c.path === "/api/clips/20260919/001-1")).toBe(true);
 
     // ユーザー2 に絞り込み、そのユーザーだけ使う
     await page.getByRole("radio", { name: /ユーザー2/ }).check();
     await expect(page.getByRole("button", { name: /^ユーザー1・/ })).toHaveCount(0);
     await page.getByRole("button", { name: "ユーザー2だけ使う" }).click();
-    await expect(page.getByText(/4 件を選択/)).toBeVisible();
+    await expect(page.getByText(/4件を選択/)).toBeVisible();
     await page.getByRole("radio", { name: /全員/ }).check();
-    await expect(september.getByRole("button", { name: "ユーザー1・クリップ 2（除外）" })).toBeVisible();
+    await expect(september.getByRole("button", { name: "ユーザー1・クリップ2（除外）" })).toBeVisible();
     await expectNoAxeViolations(page, "クリップ選択（操作後）");
 
     // 再生ボタンで単体を再生し、Esc で閉じる
-    const play = september.getByRole("button", { name: "ユーザー2・クリップ 1を再生" });
+    const play = september.getByRole("button", { name: "ユーザー2・クリップ1を再生" });
     await play.click();
-    const dialog = page.getByRole("dialog", { name: "ユーザー2・クリップ 1の再生" });
+    const dialog = page.getByRole("dialog", { name: "ユーザー2・クリップ1の再生" });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator("video")).toHaveAttribute("src", "/media/clips/20260919/001-2");
     await expectNoAxeViolations(page, "再生ダイアログ");
@@ -143,7 +143,7 @@ test("速度を選び、プレビューを作って完成版を保存する", as
     await page.getByRole("radio", { name: /^2x/ }).check();
     await expect(page.getByRole("radio", { name: /^2x/ })).toBeChecked();
     expect(calls.some((c) => c.method === "PATCH" && c.path === "/api/settings")).toBe(true);
-    await expect(page.getByText("約 10秒")).toBeVisible();
+    await expect(page.getByText("約10秒")).toBeVisible();
 
     await page.getByRole("button", { name: "プレビューを生成" }).click();
     await waitForHeading(page, "プレビューを確認");
@@ -162,12 +162,12 @@ test("速度を選び、プレビューを作って完成版を保存する", as
     await expectNoAxeViolations(page, "完成版の保存");
 });
 
-test("採用が 0 件なら、プレビューを作れない理由を表示する", async ({ page }) => {
+test("採用が0件なら、プレビューを作れない理由を表示する", async ({ page }) => {
     await mockServer(page);
     await page.goto("/");
     await waitForHeading(page, "使うクリップを選ぶ");
     await page.getByRole("button", { name: "全解除" }).click();
-    await expect(page.getByText("1 件以上選んでください")).toBeVisible();
+    await expect(page.getByText("1件以上選んでください")).toBeVisible();
     await expect(page.getByRole("button", { name: "次へ" })).toBeDisabled();
 
     await page.goto("/settings");

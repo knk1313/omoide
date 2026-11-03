@@ -20,7 +20,7 @@ export function fileNameProblem(raw: string): string | null {
     // 改行やタブなどの制御文字
     if ([...name].some((c) => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f)) return "改行やタブはファイル名に使えません";
     if (name.startsWith(".")) return "「.」で始まるファイル名は使えません。先頭の「.」を消してください";
-    if (name.length > MAX_FILE_NAME_LENGTH) return `ファイル名は ${MAX_FILE_NAME_LENGTH} 文字以内で入力してください`;
+    if (name.length > MAX_FILE_NAME_LENGTH) return `ファイル名は${MAX_FILE_NAME_LENGTH}文字以内で入力してください`;
     return null;
 }
 

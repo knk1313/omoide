@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import VideoPlayer from "./VideoPlayer";
 
 describe("VideoPlayer", () => {
-    it("読み込めなければ理由を出し、もう一度読み込むと video を作り直す", async () => {
+    it("読み込めなければ理由を出し、もう一度読み込むとvideoを作り直す", async () => {
         const { container } = render(<VideoPlayer src="/media/preview" aria-label="動画" />);
         const first = container.querySelector("video")!;
         fireEvent.error(first);

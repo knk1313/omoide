@@ -15,12 +15,12 @@ type Props = {
 
 // パネル 1 件（omoide の業務部品。テンプレートのトークンと Icon・IconButton で組む）。
 // サムネイルをタップで採用・除外を切り替え、長押しか下の行の再生ボタンで単体を再生する。
-// 再生ボタンはサムネイルに重ねず下の行に置き、2 つの操作の当たり判定が重ならないようにする（docs/migration-decisions.md M-13）。
+// 再生ボタンはサムネイルに重ねず下の行に置き、2 つの操作の当たり判定が重ならないようにする（web/README.mdの「テンプレートとの違い」）。
 // 数百件並ぶので memo にし、ほかのタイルの切り替えでは描き直さない。
 function ClipTile({ clip, onToggle, onPlay }: Props) {
     const { handlers, consumeClick } = useLongPress(() => onPlay(clip));
     // 画面には「ユーザー1」だけを出す。読み上げでは同じ名前のタイルを区別できるよう、クリップの番号も付ける
-    const name = `${clip.label}・クリップ ${clip.clip}`;
+    const name = `${clip.label}・クリップ${clip.clip}`;
 
     return (
         <li className={cn("relative flex min-w-0 flex-col rounded-8 bg-surface", clip.selected ? "ring-3 ring-primary" : "ring-1 ring-border-on-canvas")}>

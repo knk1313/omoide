@@ -108,7 +108,7 @@ describe("動画を取り込む画面", () => {
 
         const date = await screen.findByLabelText(/^この動画を撮影した日/);
         expect(date).toHaveValue("2026-11-01");
-        expect(screen.getByText(/動画の情報から 2026年11月1日/)).toBeInTheDocument();
+        expect(screen.getByText(/動画の情報から2026年11月1日/)).toBeInTheDocument();
 
         server.calls.length = 0;
         fakeServer({ ...loggedIn, "GET /api/project": { status: 200, body: updated }, "PATCH /api/videos/nov": { status: 200, body: { ...newVideo, date: "2026-10-31" } } });
@@ -122,22 +122,22 @@ describe("動画を取り込む画面", () => {
 
     it("受け取れない動画は、サーバーの理由を表示して選び直せる", async () => {
         await openVideos();
-        fakeUpload(415, { detail: "MP4 か MOV の動画を選んでください" });
+        fakeUpload(415, { detail: "MP4かMOVの動画を選んでください" });
         chooseFile("photo.jpg");
-        expect(await screen.findByRole("alert")).toHaveTextContent("MP4 か MOV の動画を選んでください");
+        expect(await screen.findByRole("alert")).toHaveTextContent("MP4かMOVの動画を選んでください");
         expect(screen.getByRole("button", { name: "別の動画を選ぶ" })).toBeInTheDocument();
     });
 
-    it("Setlog の動画として読めなければ、その理由を表示する", async () => {
+    it("Setlogの動画として読めなければ、その理由を表示する", async () => {
         await openVideos({
-            "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("failed", { error: "Setlog の書き出し動画として読み取れませんでした" }) },
+            "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("failed", { error: "Setlogの書き出し動画として読み取れませんでした" }) },
         });
         fakeUpload(202, analyzeJob("queued"));
         chooseFile();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Setlog の書き出し動画として読み取れませんでした");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Setlogの書き出し動画として読み取れませんでした");
     });
 
-    it("送っている途中で Mac につながらなくなったら、その案内に切り替える", async () => {
+    it("送っている途中でMacにつながらなくなったら、その案内に切り替える", async () => {
         await openVideos();
         class OfflineXHR {
             upload = { onprogress: null };
@@ -150,7 +150,7 @@ describe("動画を取り込む画面", () => {
         }
         vi.stubGlobal("XMLHttpRequest", OfflineXHR);
         chooseFile();
-        expect(await screen.findByRole("heading", { name: "Mac につながりません" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Macにつながりません" })).toBeInTheDocument();
     });
 
     it("アクセシビリティ違反がない（撮影日の入力を含む）", async () => {
@@ -275,6 +275,6 @@ describe("動画を取り込む画面", () => {
         await openVideos({ "GET /api/project": { status: 200, body: { ...sampleProject, videos: [], total_count: 0, selected_count: 0 } } });
         expect(screen.getByRole("button", { name: "次へ" })).toBeDisabled();
         expect(screen.getByText("まだありません")).toBeInTheDocument();
-        expect(screen.getByText("動画を 1 本以上取り込んでください")).toBeInTheDocument();
+        expect(screen.getByText("動画を1本以上取り込んでください")).toBeInTheDocument();
     });
 });

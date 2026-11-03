@@ -92,7 +92,7 @@ def create_app(
         # 原因は Mac のターミナルに残し、画面には次に取る操作だけを返す
         traceback.print_exception(exc, file=sys.stderr)
         return JSONResponse(
-            {"detail": "Mac 側で問題が起きました。もう一度お試しください。続くときは、Mac のターミナルの表示を確かめてください"},
+            {"detail": "Mac側で問題が起きました。もう一度お試しください。続くときは、Macのターミナルの表示を確かめてください"},
             status_code=500,
         )
 

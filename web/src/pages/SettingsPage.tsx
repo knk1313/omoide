@@ -95,8 +95,8 @@ export default function SettingsPage() {
 // 採用数とできあがりの長さ。ページ見出しの下に、名前と値の組で横に並べる
 function Summary({ project }: { project: Project }) {
     const items = [
-        { term: "採用したクリップ", value: `${project.selected_count} 件` },
-        { term: "できあがりの長さ", value: `約 ${formatSeconds(project.estimated_seconds)}` },
+        { term: "採用したクリップ", value: `${project.selected_count}件` },
+        { term: "できあがりの長さ", value: `約${formatSeconds(project.estimated_seconds)}` },
     ];
     return (
         <dl className="m-0 flex flex-wrap gap-x-6 gap-y-1">
@@ -147,7 +147,7 @@ function Settings({ project, starting, startError, onChooseSpeed, onStart, onBac
                 <NotificationBanner
                     type="error"
                     live="assertive"
-                    title={startError ?? "クリップが 1 件も選ばれていません。クリップ選択に戻って選んでください。"}
+                    title={startError ?? "クリップが1件も選ばれていません。クリップ選択に戻って選んでください。"}
                 />
             )}
 

@@ -21,7 +21,7 @@ describe("fileNameProblem", () => {
     it("制御文字・先頭の「.」・長すぎる名前は使えない", () => {
         expect(fileNameProblem("旅行\t京都")).toMatch(/改行やタブ/);
         expect(fileNameProblem(".hidden")).toMatch(/「\.」で始まる/);
-        expect(fileNameProblem("あ".repeat(81))).toMatch(/80 文字以内/);
+        expect(fileNameProblem("あ".repeat(81))).toMatch(/80文字以内/);
     });
 
     it("拡張子は外して扱い、例には当日の日付を使う", () => {

@@ -16,7 +16,7 @@ export default function ClipPlayer({ clip, onClose }: { clip: PanelClip; onClose
                 <>
                     <span aria-hidden="true">{clip.label}の再生</span>
                     <span className="sr-only">
-                        {clip.label}・クリップ {clip.clip}の再生
+                        {clip.label}・クリップ{clip.clip}の再生
                     </span>
                 </>
             }

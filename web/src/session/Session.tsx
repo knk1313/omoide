@@ -27,7 +27,7 @@ const SessionContext = createContext<SessionValue | null>(null);
 
 export function useSession(): SessionValue {
     const value = useContext(SessionContext);
-    if (!value) throw new Error("useSession は SessionProvider の内側で使ってください");
+    if (!value) throw new Error("useSessionはSessionProviderの内側で使ってください");
     return value;
 }
 
