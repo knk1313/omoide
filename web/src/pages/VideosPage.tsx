@@ -299,6 +299,8 @@ function VideoRow({ video, disabled, onSave }: { video: Video; disabled: boolean
                     type="date"
                     size="sm"
                     block={false}
+                    // iOS Safari では日付入力の幅が内容で決まらないので、日付が収まる幅を決めておく
+                    className="w-44"
                     // 入力していなければ、メタデータの日付を初期値として見せる
                     defaultValue={video.date ?? video.metadata_date ?? ""}
                     disabled={disabled}
