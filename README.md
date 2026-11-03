@@ -1,1 +1,44 @@
 # omoide
+
+Mac に置いた Setlog の書き出し動画を自動でクリップに分割し、同じ Wi-Fi のスマホから採用するクリップを選んで、結合・速度調整・プレビュー・ダウンロードまで行うローカルファーストなツール。
+
+- **Mac**: 動画の保存・解析・変換・配信（Python + FFmpeg）
+- **スマホ**: 編集用の操作・プレビュー端末（ブラウザ、React）
+
+## 使い方
+
+```bash
+# 初回のみ (FFmpeg が必要: brew install ffmpeg)
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# input/ に Setlog の書き出し動画 (MP4 / MOV) を置いて実行
+.venv/bin/python main.py scan            # クリップと中身のあるパネルを一覧表示
+.venv/bin/python main.py scan --export   # 中身のあるパネルを output/<動画名>/ に書き出す
+```
+
+- 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
+- 約 2 秒ごとのクリップ境界を検出する
+- 縦に 3 段並んだカードを検出し、余白と角丸を除いて切り出す
+- 時刻と zZ だけの空カードは除外する
+
+`input/` と `output/` の中身は Git 管理外。
+
+## 構成
+
+```text
+.
+├── main.py          # CLI の入口
+├── setlog_join/     # 動画の解析・切り出し (Python)
+├── tests/           # Python のテスト
+├── web/             # スマホ向け UI (Vite + React + TypeScript + Tailwind CSS)
+├── input/           # 入力動画を置く
+└── output/          # 書き出し先
+```
+
+```bash
+# Python のテスト
+.venv/bin/python -m unittest discover -s tests
+```
+
+`web/` は [workspace-ui-template](https://github.com/knk1313/workspace-ui-template) をもとにしている。開発方法は [web/README.md](web/README.md) を参照。
