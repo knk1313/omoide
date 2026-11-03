@@ -3,8 +3,11 @@ import { expect } from "vitest";
 
 // jsdom では色のコントラストを計算できないため、color-contrast ルールは無効化する
 // （コントラストは src/tokens/contrast.test.ts と Playwright の axe で検査する）。
+// また、axe は検査の前に CSS と動画の読み込み（preload）を待つが、jsdom では <video> が読み込まれず、
+// 上限の 10 秒まで待ってしまう。jsdom での検査では待たない（omoide での追加）。
 const OPTIONS: RunOptions = {
     rules: { "color-contrast": { enabled: false } },
+    preload: false,
 };
 
 function describeViolations(results: AxeResults): string {

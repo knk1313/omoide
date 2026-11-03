@@ -220,8 +220,7 @@ describe("クリップ選択画面", () => {
         await expectNoA11yViolations(container);
         await user.click(screen.getAllByRole("button", { name: /を再生$/ })[0]);
         await expectNoA11yViolations(document.body);
-        // jsdom での axe は画面全体を 2 回調べるので時間がかかる
-    }, 20_000);
+    });
 
     it("パネルが 1 件も無ければ、動画を取り込む画面へ移る", async () => {
         fakeServer({ ...loggedIn, "GET /api/clips": { status: 200, body: [] } });
