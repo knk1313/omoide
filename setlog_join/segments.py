@@ -31,8 +31,7 @@ class Clip:
 def read_small_frames(path: Path) -> np.ndarray:
     """全フレームを縮小したグレースケール (n, SMALL_HEIGHT, SMALL_WIDTH) で返す。"""
     return ffmpeg.gray_frames(
-        "-i", str(path), "-vf", f"scale={SMALL_WIDTH}:{SMALL_HEIGHT}",
-        width=SMALL_WIDTH, height=SMALL_HEIGHT,
+        "-i", str(path), width=SMALL_WIDTH, height=SMALL_HEIGHT,
     )
 
 
