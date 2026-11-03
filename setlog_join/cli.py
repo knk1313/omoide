@@ -13,6 +13,7 @@ from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
 from .network import port_available, resolve_host
 from .probe import VideoInfo
+from .project import load_project
 from .scan import VideoScan
 from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
 
@@ -36,10 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     join.add_argument(
         "--select", default=None,
         help="使うパネルを `<動画名>/<クリップ番号>-<パネル番号>` のカンマ区切りで指定する "
-             "(例: collection_export/001-1,collection_export/002-3)。省略すると中身のあるパネルをすべて使う",
+             "(例: collection_export/001-1,collection_export/002-3)。"
+             "省略すると project.json で除外していない、中身のあるパネルをすべて使う",
     )
     join.add_argument(
-        "--speed", type=float, default=1.0, choices=SPEEDS, help="全体の再生速度 (既定: 1)",
+        "--speed", type=float, default=None, choices=SPEEDS,
+        help="全体の再生速度。省略すると project.json に保存した速度 (無ければ 1) を使う",
     )
     join.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
 
@@ -91,7 +94,7 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     return 0
 
 
-def join_command(folder: Path, select: str | None, speed: float, output_dir: Path) -> int:
+def join_command(folder: Path, select: str | None, speed: float | None, output_dir: Path) -> int:
     try:
         refs = [PanelRef.parse(text) for text in select.split(",")] if select is not None else None
     except SelectionError as e:
@@ -107,6 +110,12 @@ def join_command(folder: Path, select: str | None, speed: float, output_dir: Pat
             scans.append(load_or_scan(info))
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
+
+    project = load_project()
+    if refs is None:
+        refs = project.selected_refs(scans)
+    if speed is None:
+        speed = project.speed
 
     try:
         segments = resolve_segments(scans, refs)
