@@ -184,6 +184,7 @@ export default function ClipsPage() {
             </div>
 
             <BottomBar
+                back={{ label: "動画", onClick: () => navigate("/videos") }}
                 summary={
                     selected.length > 0 ? (
                         <>

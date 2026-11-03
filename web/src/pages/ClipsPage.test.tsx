@@ -177,6 +177,12 @@ describe("クリップ選択画面", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
+    it("動画の取り込みの画面へ戻れる", async () => {
+        const { user } = await openClips();
+        await user.click(screen.getByRole("button", { name: "動画" }));
+        expect(await screen.findByRole("heading", { name: "動画を取り込む" })).toBeInTheDocument();
+    });
+
     it("次へで速度の画面へ進む", async () => {
         const { user } = await openClips();
         await user.click(screen.getByRole("button", { name: "次へ" }));
