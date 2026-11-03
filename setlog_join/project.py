@@ -7,6 +7,7 @@
 
 import json
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 from .join import SPEEDS, PanelRef
@@ -21,6 +22,8 @@ class Project:
     speed: float = 1.0
     # 除外したパネルの ID (`<動画名>/<クリップ番号>-<パネル番号>`)
     excluded: set[str] = field(default_factory=set)
+    # 動画名 → 利用者が入力した撮影日 (`2026-09-19`)。入力していない動画は含めない
+    video_dates: dict[str, str] = field(default_factory=dict)
 
     def is_selected(self, ref: PanelRef) -> bool:
         return str(ref) not in self.excluded
@@ -46,6 +49,14 @@ def panel_refs(scans: list[VideoScan]) -> list[PanelRef]:
     ]
 
 
+def is_date(value: str) -> bool:
+    """`2026-09-19` の形の、実在する日付か。"""
+    try:
+        return date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
+
+
 def load_project(path: Path = PROJECT_PATH) -> Project:
     """保存した内容を読む。無い・壊れている・形式が古いときは、すべて採用・等速として始める。"""
     try:
@@ -53,9 +64,12 @@ def load_project(path: Path = PROJECT_PATH) -> Project:
         if data["version"] != PROJECT_VERSION:
             return Project()
         speed = float(data["speed"])
+        dates = data.get("video_dates", {})
         return Project(
             speed=speed if speed in SPEEDS else 1.0,
             excluded={str(ref) for ref in data["excluded"]},
+            # 日付を後から足したので、無いファイルも読めるようにする。形の正しいものだけを使う
+            video_dates={str(k): str(v) for k, v in dates.items() if is_date(str(v))} if isinstance(dates, dict) else {},
         )
     except (OSError, ValueError, KeyError, TypeError):
         return Project()
@@ -63,7 +77,12 @@ def load_project(path: Path = PROJECT_PATH) -> Project:
 
 def save_project(project: Project, path: Path = PROJECT_PATH) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = {"version": PROJECT_VERSION, "speed": project.speed, "excluded": sorted(project.excluded)}
+    data = {
+        "version": PROJECT_VERSION,
+        "speed": project.speed,
+        "excluded": sorted(project.excluded),
+        "video_dates": dict(sorted(project.video_dates.items())),
+    }
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2))
     # 書き込み途中で止まっても壊れたファイルが残らないよう、書き終えてから置き換える

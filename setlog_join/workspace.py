@@ -14,10 +14,10 @@ from .cache import CACHE_VERSION, file_stamp, video_key
 from .export import export_panel_clip
 from .join import SPEEDS, PanelRef, Segment, SelectionError, resolve_segments
 from .panels import Panel
-from .project import PROJECT_PATH, Project, load_project, save_project
+from .project import PROJECT_PATH, Project, is_date, load_project, save_project
 from .scan import ScannedClip, VideoScan
 from .segments import Clip
-from .thumbnails import THUMBNAIL_DIR
+from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
 
 CLIP_DIR = Path(".setlog-join/clips")
 
@@ -47,22 +47,75 @@ class Workspace:
         thumbnail_dir: Path = THUMBNAIL_DIR,
         clip_dir: Path = CLIP_DIR,
     ):
-        self.scans = scans
         self._project_path = project_path
         self._thumbnail_dir = thumbnail_dir
         self._clip_dir = clip_dir
         self.project = load_project(project_path)
-        # 時系列の順 (動画 → クリップ → パネル) に並べる
+        self.scans: list[VideoScan] = []
         self.entries: dict[str, PanelEntry] = {}
-        for scan in scans:
+        # API はスレッドプールで並行に呼ばれるので、選択の更新と動画の生成をそれぞれ直列にする
+        self._project_lock = threading.Lock()
+        self._media_lock = threading.Lock()
+        self._arrange(scans)
+
+    def _arrange(self, scans: list[VideoScan]) -> None:
+        """動画を撮影日の順に並べ、パネルを時系列の順 (動画 → クリップ → パネル) に並べ直す。"""
+        ordered = sorted(scans, key=self._order_key)
+        entries: dict[str, PanelEntry] = {}
+        for scan in ordered:
             for scanned in scan.clips:
                 for panel in scanned.filled:
                     entry = PanelEntry(PanelRef(scan.info.path.stem, scanned.clip.index, panel.position + 1),
                                        scan, scanned, panel)
-                    self.entries[entry.id] = entry
-        # API はスレッドプールで並行に呼ばれるので、選択の更新と動画の生成をそれぞれ直列にする
-        self._project_lock = threading.Lock()
-        self._media_lock = threading.Lock()
+                    entries[entry.id] = entry
+        # 読み取り中の API に作りかけを見せないよう、作り終えてから差し替える
+        self.scans, self.entries = ordered, entries
+
+    def _order_key(self, scan: VideoScan) -> tuple[str, str, str]:
+        name = scan.info.path.stem
+        created = scan.info.created_at.isoformat() if scan.info.created_at else ""
+        return (self.video_date(scan) or "9999-99-99", created, name)
+
+    def video_date(self, scan: VideoScan) -> str | None:
+        """撮影日。利用者が入力した日付を優先し、無ければ動画のメタデータの日付（端末のタイムゾーン）。"""
+        return self.project.video_dates.get(scan.info.path.stem) or metadata_date(scan)
+
+    def add_scan(self, scan: VideoScan) -> None:
+        """serve の途中で取り込んだ動画を加える。同じ名前の動画があれば置き換える。"""
+        with self._project_lock:
+            others = [s for s in self.scans if s.info.path.stem != scan.info.path.stem]
+            self._arrange([*others, scan])
+
+    def find_video(self, name: str) -> VideoScan:
+        """存在しない動画名なら KeyError。"""
+        for scan in self.scans:
+            if scan.info.path.stem == name:
+                return scan
+        raise KeyError(name)
+
+    def set_video_date(self, name: str, value: str | None) -> None:
+        """撮影日を入力する。None なら入力を消し、メタデータの日付に戻す。形が正しくなければ ValueError。"""
+        scan = self.find_video(name)
+        if value is not None and not is_date(value):
+            raise ValueError("日付は 2026-09-19 の形で入力してください")
+        with self._project_lock:
+            if value is None:
+                self.project.video_dates.pop(scan.info.path.stem, None)
+            else:
+                self.project.video_dates[scan.info.path.stem] = value
+            save_project(self.project, self._project_path)
+            self._arrange(self.scans)
+
+    def video_json(self, scan: VideoScan) -> dict:
+        return {
+            "name": scan.info.path.stem,
+            "created_at": scan.info.created_at.isoformat() if scan.info.created_at else None,
+            # メタデータから読んだ撮影日。日付を入力するときの初期値に使う
+            "metadata_date": metadata_date(scan),
+            # 利用者が入力した撮影日。入力していなければ None
+            "date": self.project.video_dates.get(scan.info.path.stem),
+            "panel_count": scan.candidate_count,
+        }
 
     def get(self, panel_id: str) -> PanelEntry:
         """存在しない ID なら KeyError。"""
@@ -114,14 +167,7 @@ class Workspace:
             "total_count": len(self.entries),
             "selected_count": len(selected),
             "estimated_seconds": round(seconds / self.project.speed, 2),
-            "videos": [
-                {
-                    "name": scan.info.path.stem,
-                    "created_at": scan.info.created_at.isoformat() if scan.info.created_at else None,
-                    "panel_count": scan.candidate_count,
-                }
-                for scan in self.scans
-            ],
+            "videos": [self.video_json(scan) for scan in self.scans],
         }
 
     def selected_segments(self) -> list[Segment]:
@@ -132,6 +178,9 @@ class Workspace:
         """パネル単体の動画を消す。次に要求されたときに作り直す。"""
         with self._media_lock:
             shutil.rmtree(self._clip_dir, ignore_errors=True)
+
+    def ensure_thumbnails(self, scan: VideoScan) -> None:
+        ensure_thumbnails(scan, self._thumbnail_dir)
 
     def thumbnail_path(self, entry: PanelEntry) -> Path:
         return self._thumbnail_dir / video_key(entry.scan.info) / f"{entry.ref.clip:03d}-{entry.ref.panel}.jpg"
@@ -146,6 +195,12 @@ class Workspace:
                 # 作り途中のファイルを配信しないよう、書き終えてから置き換える
                 tmp.replace(path)
         return path
+
+
+def metadata_date(scan: VideoScan) -> str | None:
+    """動画のメタデータの作成日時を、この Mac のタイムゾーンの日付にする。"""
+    created = scan.info.created_at
+    return created.astimezone().date().isoformat() if created else None
 
 
 def _media_key(entry: PanelEntry) -> str:
