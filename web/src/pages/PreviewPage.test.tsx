@@ -98,8 +98,14 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
 
         const save = await screen.findByRole("link", { name: "保存する" });
-        expect(save).toHaveAttribute("href", "/download/output");
         expect(save).toHaveAttribute("download");
+        // 名前の初期値は omoide-<今日の日付>。変えると保存の名前も変わる
+        const name = screen.getByLabelText("ファイル名");
+        expect((name as HTMLInputElement).value).toMatch(/^omoide-\d{8}$/);
+        await user.clear(name);
+        await user.type(name, "9月の旅行");
+        expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
+        expect(save).toHaveAttribute("download", "9月の旅行.mp4");
         expect(screen.getByText("完成版ができました")).toBeInTheDocument();
     });
 

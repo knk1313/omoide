@@ -13,6 +13,7 @@ export default function PreviewPage() {
     const preview = useJob("preview");
     const output = useJob("export");
     const [frame, setFrame] = useState<Project["frame"]>(null);
+    const [fileName, setFileName] = useState(defaultFileName);
 
     // 開いたらプレビューの生成を頼む。採用と速度が前回と同じなら、サーバーは作り終えたジョブをそのまま返す
     const requested = useRef(false);
@@ -67,6 +68,23 @@ export default function PreviewPage() {
                             <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-ink" aria-hidden />
                             完成版ができました
                         </p>
+                        <div className="flex flex-col gap-1.5">
+                            <label htmlFor="file-name" className="text-sm font-medium text-ink">
+                                ファイル名
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    id="file-name"
+                                    value={fileName}
+                                    onChange={(e) => setFileName(e.target.value)}
+                                    maxLength={80}
+                                    enterKeyHint="done"
+                                    // iOS Safari が入力時に画面を拡大しないよう 16px にする
+                                    className="h-12 min-w-0 flex-1 rounded-control border border-control-border bg-surface px-4 text-base text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
+                                />
+                                <span className="shrink-0 text-sm text-muted">.mp4</span>
+                            </div>
+                        </div>
                         <p className="text-xs leading-relaxed text-muted">
                             iPhone では「ファイル」アプリの「ダウンロード」に保存されます。写真に入れるときは、ファイルを開いて共有から「ビデオを保存」を選んでください。
                         </p>
@@ -80,8 +98,12 @@ export default function PreviewPage() {
 
             <BottomBar back={{ label: "速度を変える", onClick: () => navigate("/settings") }}>
                 {output.job?.status === "done" && output.job.url ? (
-                    // 添付ファイルとして返るので、スマホでは保存に進む
-                    <a href={output.job.url} download className={`${buttonClass()} ${PRIMARY_ACTION}`}>
+                    // 添付ファイルとして返るので、スマホでは保存に進む。名前はサーバーで整える（空なら既定の名前）
+                    <a
+                        href={`${output.job.url}?name=${encodeURIComponent(fileName.trim())}`}
+                        download={`${fileName.trim() || defaultFileName()}.mp4`}
+                        className={`${buttonClass()} ${PRIMARY_ACTION}`}
+                    >
                         <Download className="h-5 w-5" aria-hidden />
                         保存する
                     </a>
@@ -97,6 +119,13 @@ export default function PreviewPage() {
             </BottomBar>
         </div>
     );
+}
+
+/** 保存するファイル名の初期値（例: omoide-20261103）。 */
+function defaultFileName(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `omoide-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
 }
 
 function Progress({ label, job }: { label: string; job: Job | null }) {
