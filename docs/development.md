@@ -58,7 +58,12 @@ Pythonのテストは標準ライブラリの`unittest`で書く。
 
 ## CI
 
-GitHub Actionsが、pushとPRのたびに`.github/workflows/ci.yml`を実行する。現時点では`web/`だけを対象にしている。Pythonのテストの追加はissue #5で扱う。
+GitHub Actionsが、pushとPRのたびに`.github/workflows/ci.yml`を実行する。ジョブは次の二つ。
+
+- `check`：`web/`で`npm run check`と`npm run build`を実行する
+- `python`：FFmpegを入れ、`.python-version`のPythonで`tests/`の`unittest`を実行する
+
+どちらかが失敗すると、CIが失敗する。Pythonのバージョンを変えるときは`.python-version`を書き換える。
 
 ## 出典
 
