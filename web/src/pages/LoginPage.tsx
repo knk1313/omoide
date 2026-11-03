@@ -64,12 +64,12 @@ export default function LoginPage() {
                         <span className="flex h-lh shrink-0 items-center">
                             <Icon icon={Wifi} size="sm" className="text-primary" />
                         </span>
-                        Mac と同じ Wi-Fi に接続してから、Mac で設定したパスワードを入力してください。
+                        Macと同じWi-Fiに接続してから、Macで設定したパスワードを入力してください。
                     </span>
                 }
             />
 
-            {/* 送信の結果のエラーは、入力欄の上にまとめて出し、すぐ読み上げる（docs/migration-decisions.md M-10） */}
+            {/* 送信の結果のエラーは、入力欄の上にまとめて出し、すぐ読み上げる（web/README.mdの「テンプレートとの違い」） */}
             {error && <NotificationBanner id="login-error" type="error" live="assertive" title={error} />}
 
             <FormField label="パスワード" id="password">

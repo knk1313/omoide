@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
             <main className="mx-auto w-full max-w-app">
                 <ErrorPage
                     title="問題が起きました"
-                    description="画面を読み込み直してください。選んだ内容は Mac に保存されています。"
+                    description="画面を読み込み直してください。選んだ内容はMacに保存されています。"
                     actions={<Button onClick={() => window.location.reload()}>読み込み直す</Button>}
                 />
             </main>

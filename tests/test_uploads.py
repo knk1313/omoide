@@ -93,7 +93,7 @@ class AnalyzeVideoTest(unittest.TestCase):
                             "-pix_fmt", "yuv420p", str(path)], check=True)
             with self.assertRaises(AnalysisError) as ctx:
                 analyze_video(path)
-        self.assertIn("Setlog の書き出し動画として読み取れませんでした", str(ctx.exception))
+        self.assertIn("Setlogの書き出し動画として読み取れませんでした", str(ctx.exception))
 
 
 if __name__ == "__main__":

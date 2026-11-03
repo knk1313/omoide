@@ -138,19 +138,19 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(fireEvent.click(save)).toBe(true);
     });
 
-    it("生成の途中で Mac につながらなくなったら、原因と対処を並べて案内する", async () => {
+    it("生成の途中でMacにつながらなくなったら、原因と対処を並べて案内する", async () => {
         await openPreview({
             "POST /api/preview": accepted(job("preview", "running", 0.1)),
             "GET /api/jobs/preview-1": new TypeError("Failed to fetch"),
         });
-        expect(await screen.findByRole("heading", { name: "Mac につながりません" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Macにつながりません" })).toBeInTheDocument();
         const checks = screen.getAllByRole("listitem").map((li) => li.textContent);
-        expect(checks.join("\n")).toMatch(/同じ Wi-Fi/);
+        expect(checks.join("\n")).toMatch(/同じWi-Fi/);
         expect(checks.join("\n")).toMatch(/スリープ/);
-        expect(checks.join("\n")).toMatch(/serve が動いているか/);
+        expect(checks.join("\n")).toMatch(/serveが動いているか/);
     });
 
-    it("Wi-Fi が一瞬途切れただけなら、作業を止めずに取り直す", async () => {
+    it("Wi-Fiが一瞬途切れただけなら、作業を止めずに取り直す", async () => {
         let calls = 0;
         await openPreview({
             "POST /api/preview": accepted(job("preview", "running", 0.1)),
@@ -158,7 +158,7 @@ describe("プレビュー・ダウンロード画面", () => {
             "GET /api/jobs/preview-1": () => (++calls === 1 ? new TypeError("Failed to fetch") : ok(job("preview", "done", 1))),
         });
         expect(await screen.findByLabelText("プレビュー動画")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Mac につながりません" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Macにつながりません" })).not.toBeInTheDocument();
     });
 
     it("動画を読み込めなければ、理由と読み込み直すボタンを出す", async () => {
@@ -218,8 +218,8 @@ describe("プレビュー・ダウンロード画面", () => {
         await expectNoA11yViolations(container);
     });
 
-    it("手順の表示は 4 番目", async () => {
+    it("手順の表示は4番目", async () => {
         await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
-        expect(currentStep()).toHaveTextContent(/ステップ 4 \/ 4、現在のステップ.*確認/);
+        expect(currentStep()).toHaveTextContent(/ステップ4 \/ 4、現在のステップ.*確認/);
     });
 });

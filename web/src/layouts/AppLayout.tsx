@@ -7,7 +7,7 @@ import { useSession } from "@/session/Session";
 import { Brand, ShellHeader, SkipLink } from "./ShellHeader";
 
 // スマホで一つの作業を順に進めるための外枠。上にアプリ名、その下に今いる手順、続けて各画面の中身を置く。
-// テンプレートの ShellHeader と StepNavigation で組み、サイドバーは使わない（docs/migration-decisions.md M-02）。
+// テンプレートの ShellHeader と StepNavigation で組み、サイドバーは使わない（web/README.mdの「テンプレートとの違い」）。
 // 幅の広い画面でも、スマホの幅（max-w-app）で中央に寄せる。
 export default function AppLayout() {
     const { pathname } = useLocation();

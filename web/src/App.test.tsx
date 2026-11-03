@@ -11,17 +11,17 @@ describe("画面の骨組み", () => {
     it("クリップ選択から速度、プレビューへ順に進める", async () => {
         const { user } = renderApp("/");
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
-        expect(currentStep()).toHaveTextContent(/ステップ 2 \/ 4、現在のステップ.*選ぶ/);
+        expect(currentStep()).toHaveTextContent(/ステップ2 \/ 4、現在のステップ.*選ぶ/);
 
         await user.click(await screen.findByRole("button", { name: "次へ" }));
         // 速度の画面は、要約を読み込んでから見出しを出すので、待つ
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
-        expect(currentStep()).toHaveTextContent(/ステップ 3 \/ 4、現在のステップ.*速度/);
+        expect(currentStep()).toHaveTextContent(/ステップ3 \/ 4、現在のステップ.*速度/);
 
         await user.click(await screen.findByRole("button", { name: "プレビューを生成" }));
         // 生成を頼んだ応答の後で移るので、待つ
         expect(await screen.findByRole("heading", { name: "プレビューを確認" })).toBeInTheDocument();
-        expect(currentStep()).toHaveTextContent(/ステップ 4 \/ 4、現在のステップ.*確認/);
+        expect(currentStep()).toHaveTextContent(/ステップ4 \/ 4、現在のステップ.*確認/);
 
         await user.click(screen.getByRole("button", { name: "速度を変える" }));
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe("画面の骨組み", () => {
         expect(screen.queryByRole("navigation", { name: "手順" })).not.toBeInTheDocument();
     });
 
-    it("存在しない URL は 404 を表示し、クリップ選択へ戻れる", async () => {
+    it("存在しないURLは404を表示し、クリップ選択へ戻れる", async () => {
         const { user } = renderApp("/nope");
         expect(screen.getByText("ページが見つかりません")).toBeInTheDocument();
         await user.click(screen.getByRole("link", { name: "クリップ選択へ戻る" }));

@@ -34,7 +34,7 @@ export type NotificationBannerProps = {
     actions?: ReactNode;
     /**
      * 動的に表示する通知として role="status" を付ける（ページ読み込み時の静的表示では付けない）。
-     * "assertive" は role="alert"。操作の結果としてすぐ伝えるべきエラーに使う（omoide での追加。docs/migration-decisions.md M-06）。
+     * "assertive" は role="alert"。操作の結果としてすぐ伝えるべきエラーに使う（omoideでの追加。web/README.mdの「テンプレートとの違い」）。
      */
     live?: boolean | "assertive";
     id?: string;

@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 
 // アプリケーションシェルのヘッダーの部品。テンプレートの src/layouts/ShellHeader.tsx から、omoide が使わない
-// HamburgerButton（メニューを持たないため）を除いてコピーした（docs/migration-decisions.md M-02）。
+// HamburgerButton（メニューを持たないため）を除いてコピーした（web/README.mdの「テンプレートとの違い」）。
 //   - SkipLink: 「本文へスキップ」。最初の Tab で現れ、<main id="main"> に移動する。
 //   - Brand: アプリのロゴとアプリ名（ホームへのリンク）。
 //   - ShellHeader: 高さ 64px、白い面 + 下の罫線。
@@ -40,7 +40,9 @@ export function Brand({ name, logo, href = "/", className }: BrandProps) {
             )}
         >
             {logo && <Icon icon={logo} size="lg" className="text-primary" />}
-            <span className="truncate">{name}</span>
+            {/* 狭い画面では折り返す（1 行で切ると「申請管…」のように名前が読めなくなるため）。
+                sm未満は16pxにして、文字間隔を広げたとき（WCAG 1.4.12）も3行まで高さ64pxのヘッダーに収める */}
+            <span className="line-clamp-3 break-words max-sm:text-16">{name}</span>
         </Link>
     );
 }

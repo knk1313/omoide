@@ -9,23 +9,23 @@ type Message = { icon: LucideIcon; title: string; message: string; checks?: read
 const MESSAGES: Record<Problem, Message> = {
     "no-share": {
         icon: QrCode,
-        title: "QR コードを読み取ってください",
-        message: "Mac のターミナルに表示された QR コードを、このスマホのカメラで読み取ってください。",
+        title: "QRコードを読み取ってください",
+        message: "Macのターミナルに表示されたQRコードを、このスマホのカメラで読み取ってください。",
     },
     expired: {
         icon: Clock,
         title: "共有の期限が切れました",
-        message: "Mac でもう一度 serve を起動し、新しく表示された QR コードを読み取ってください。",
+        message: "Macでもう一度serveを起動し、新しく表示されたQRコードを読み取ってください。",
     },
     offline: {
         icon: WifiOff,
-        title: "Mac につながりません",
+        title: "Macにつながりません",
         message: "次のどれかが起きています。確かめてから、もう一度試してください。",
         // ブラウザからは原因を見分けられないので、考えられる原因と対処を並べる
         checks: [
-            "スマホが Mac と同じ Wi-Fi に接続しているか",
-            "Mac がスリープしていないか。スリープしていたら、Mac を開いて起こす",
-            "Mac のターミナルで serve が動いているか。終了していたら起動し直し、新しい QR コードを読み取る",
+            "スマホがMacと同じWi-Fiに接続しているか",
+            "Macがスリープしていないか。スリープしていたら、Macを開いて起こす",
+            "Macのターミナルでserveが動いているか。終了していたら起動し直し、新しいQRコードを読み取る",
         ],
     },
 };

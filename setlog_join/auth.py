@@ -20,7 +20,7 @@ _SCRYPT = {"n": 2**14, "r": 8, "p": 1}
 
 class LoginLocked(Exception):
     def __init__(self, retry_after: float):
-        super().__init__(f"{retry_after:.0f} 秒後に再試行してください")
+        super().__init__(f"{retry_after:.0f}秒後に再試行してください")
         self.retry_after = retry_after
 
 
@@ -88,8 +88,8 @@ def parse_duration(text: str) -> float:
     units = {"h": 3600, "m": 60, "s": 1}
     text = text.strip().lower()
     if len(text) < 2 or text[-1] not in units or not text[:-1].isdigit():
-        raise ValueError(f"期限は 2h・30m・90s のように指定してください: {text}")
+        raise ValueError(f"期限は2h・30m・90sのように指定してください: {text}")
     seconds = int(text[:-1]) * units[text[-1]]
     if not 0 < seconds <= 24 * 3600:
-        raise ValueError("期限は 1 秒から 24 時間までにしてください")
+        raise ValueError("期限は1秒から24時間までにしてください")
     return float(seconds)

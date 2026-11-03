@@ -8,8 +8,8 @@ import { Breadcrumb } from "./Breadcrumb";
 const items = [
     { label: "ホーム", href: "/" },
     { label: "申請一覧", href: "/items" },
-    { label: "2026 年度", href: "/items/2026" },
-    { label: "申請 No.123" },
+    { label: "2026年度", href: "/items/2026" },
+    { label: "申請No.123" },
 ];
 
 function renderCrumb(ui: React.ReactElement) {
@@ -17,14 +17,14 @@ function renderCrumb(ui: React.ReactElement) {
 }
 
 describe("Breadcrumb", () => {
-    it("nav + ol で描画し、最後の項目は aria-current=page のテキストになる", () => {
+    it("nav + olで描画し、最後の項目はaria-current=pageのテキストになる", () => {
         renderCrumb(<Breadcrumb items={items} />);
         const nav = screen.getByRole("navigation", { name: "パンくずリスト" });
         expect(nav.querySelector("ol")).toBeInTheDocument();
         expect(screen.getAllByRole("listitem")).toHaveLength(4);
         expect(screen.getAllByRole("link")).toHaveLength(3);
         expect(screen.getByRole("link", { name: "申請一覧" })).toHaveAttribute("href", "/items");
-        const current = screen.getByText("申請 No.123");
+        const current = screen.getByText("申請No.123");
         expect(current).toHaveAttribute("aria-current", "page");
         expect(current.tagName).toBe("SPAN");
     });
@@ -36,7 +36,7 @@ describe("Breadcrumb", () => {
         svgs.forEach((svg) => expect(svg).toHaveAttribute("aria-hidden", "true"));
     });
 
-    it("collapseOnMobile では中間項目を隠し、省略ボタンで展開できる", async () => {
+    it("collapseOnMobileでは中間項目を隠し、省略ボタンで展開できる", async () => {
         const user = userEvent.setup();
         renderCrumb(<Breadcrumb items={items} collapseOnMobile />);
         const middle = screen.getByRole("link", { name: "申請一覧" }).closest("li")!;
@@ -47,12 +47,12 @@ describe("Breadcrumb", () => {
         expect(middle).not.toHaveClass("hidden");
     });
 
-    it("項目が 2 つ以下なら省略しない", () => {
+    it("項目が2つ以下なら省略しない", () => {
         renderCrumb(<Breadcrumb items={items.slice(0, 2)} collapseOnMobile />);
         expect(screen.queryByRole("button")).toBeNull();
     });
 
-    it("label で nav の名前を変えられる", () => {
+    it("labelでnavの名前を変えられる", () => {
         renderCrumb(<Breadcrumb items={items} label="現在地" />);
         expect(screen.getByRole("navigation", { name: "現在地" })).toBeInTheDocument();
     });

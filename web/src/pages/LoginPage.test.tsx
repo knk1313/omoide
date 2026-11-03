@@ -11,7 +11,7 @@ describe("パスワード画面", () => {
         fakeServer(notLoggedIn);
         renderApp("/settings");
         expect(await screen.findByRole("heading", { name: "パスワードを入力" })).toBeInTheDocument();
-        expect(screen.getByText(/Mac と同じ Wi-Fi に接続して/)).toBeInTheDocument();
+        expect(screen.getByText(/Macと同じWi-Fiに接続して/)).toBeInTheDocument();
         expect(window.location.pathname).toBe("/login");
     });
 
@@ -25,7 +25,7 @@ describe("パスワード画面", () => {
         expect(server.calls).toContainEqual({ method: "POST", path: "/api/session/login", body: { password: "correct horse" } });
     });
 
-    it("Enter でも送信できる", async () => {
+    it("Enterでも送信できる", async () => {
         fakeServer({ ...loggedIn, ...notLoggedIn, "POST /api/session/login": { status: 200 } });
         const { user } = renderApp("/login");
         await user.type(await screen.findByLabelText(PASSWORD_FIELD.name), "correct horse{Enter}");
@@ -93,19 +93,19 @@ describe("パスワード画面", () => {
 });
 
 describe("ログインより前に進めないとき", () => {
-    it("共有 URL を開いていなければ、QR コードを読み取るよう案内する", async () => {
+    it("共有URLを開いていなければ、QRコードを読み取るよう案内する", async () => {
         fakeServer({ "GET /api/health": { status: 404 } });
         renderApp("/");
-        expect(await screen.findByRole("heading", { name: "QR コードを読み取ってください" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "QRコードを読み取ってください" })).toBeInTheDocument();
         // ログインする前は、手順を見せない
         expect(screen.queryByRole("navigation", { name: "手順" })).not.toBeInTheDocument();
     });
 
-    it("期限が切れていれば、Mac で起動し直すよう案内する", async () => {
+    it("期限が切れていれば、Macで起動し直すよう案内する", async () => {
         fakeServer({ "GET /api/health": { status: 410, body: { detail: "共有の期限が切れました" } } });
         renderApp("/login");
         expect(await screen.findByRole("heading", { name: "共有の期限が切れました" })).toBeInTheDocument();
-        expect(screen.getByText(/もう一度 serve を起動/)).toBeInTheDocument();
+        expect(screen.getByText(/もう一度serveを起動/)).toBeInTheDocument();
     });
 
     it("ログインの途中で期限が切れたら、その案内に切り替える", async () => {
@@ -116,10 +116,10 @@ describe("ログインより前に進めないとき", () => {
         expect(await screen.findByRole("heading", { name: "共有の期限が切れました" })).toBeInTheDocument();
     });
 
-    it("Mac につながらなければ、Wi-Fi を確かめて再試行できる", async () => {
+    it("Macにつながらなければ、Wi-Fiを確かめて再試行できる", async () => {
         fakeServer({ "GET /api/health": new TypeError("Failed to fetch") });
         renderApp("/");
-        expect(await screen.findByRole("heading", { name: "Mac につながりません" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Macにつながりません" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "もう一度試す" })).toBeInTheDocument();
     });
 });

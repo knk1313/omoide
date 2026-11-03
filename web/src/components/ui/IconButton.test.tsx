@@ -6,14 +6,14 @@ import { expectNoA11yViolations } from "@/test/axe";
 import { IconButton } from "./IconButton";
 
 describe("IconButton", () => {
-    it("label を aria-label にし、アイコンは装飾になる", () => {
+    it("labelをaria-labelにし、アイコンは装飾になる", () => {
         render(<IconButton icon={X} label="閉じる" />);
         const button = screen.getByRole("button", { name: "閉じる" });
         expect(button).toHaveAttribute("type", "button");
         expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     });
 
-    it("クリックとキーボードで onClick を呼ぶ", async () => {
+    it("クリックとキーボードでonClickを呼ぶ", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         render(<IconButton icon={X} label="閉じる" onClick={onClick} />);
@@ -22,14 +22,14 @@ describe("IconButton", () => {
         expect(onClick).toHaveBeenCalledTimes(2);
     });
 
-    it("size / variant / tone に応じたクラスを付ける", () => {
+    it("size / variant / toneに応じたクラスを付ける", () => {
         const { rerender } = render(<IconButton icon={X} label="A" />);
         expect(screen.getByRole("button")).toHaveClass("size-target", "rounded-8", "hover:bg-surface-muted");
         rerender(<IconButton icon={X} label="A" size="sm" variant="outline" tone="error" />);
         expect(screen.getByRole("button")).toHaveClass("tap-area", "size-9", "border", "text-error");
     });
 
-    it("ref と className を受け取る", () => {
+    it("refとclassNameを受け取る", () => {
         const ref = { current: null as HTMLButtonElement | null };
         render(<IconButton icon={X} label="A" ref={ref} className="ml-auto" />);
         expect(ref.current).toBeInstanceOf(HTMLButtonElement);

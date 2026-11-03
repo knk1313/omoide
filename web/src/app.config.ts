@@ -14,7 +14,7 @@ export const appConfig = {
     /** ヘッダーとブラウザタイトルに表示するアプリ名。 */
     name: "omoide",
     /** index.html の meta description。 */
-    description: "Setlog の動画をスマホで選んで、1 本にまとめる",
+    description: "Setlogの動画をスマホで選んで、1本にまとめる",
     /** ヘッダーのアプリ名の左に置くアイコン。 */
     logo: Film as LucideIcon,
     /** 日付の表示。時刻は端末のタイムゾーンで表示する。 */

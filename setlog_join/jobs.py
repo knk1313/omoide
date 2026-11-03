@@ -61,13 +61,13 @@ def analyze_video(path: Path) -> VideoScan:
     try:
         info = probe(path)
     except Exception as e:
-        raise AnalysisError("動画として読み取れませんでした。MP4 か MOV の動画を選んでください") from e
+        raise AnalysisError("動画として読み取れませんでした。MP4かMOVの動画を選んでください") from e
     try:
         scan = load_or_scan(info)
     except ValueError as e:
         # 3 段のカードが見つからない
         raise AnalysisError(
-            "Setlog の書き出し動画として読み取れませんでした。Setlog から書き出した動画を選んでください"
+            "Setlogの書き出し動画として読み取れませんでした。Setlogから書き出した動画を選んでください"
         ) from e
     return scan
 
@@ -142,7 +142,7 @@ class JobManager:
             needed = int(seconds * _BYTES_PER_SECOND[kind] * 2) + _SPACE_MARGIN
             if self._free_bytes(directory) < needed:
                 raise InsufficientSpace(
-                    f"Mac の空き容量が足りません (あと {needed / 1e9:.1f}GB 必要)。"
+                    f"Macの空き容量が足りません（あと{needed / 1e9:.1f}GB必要）。"
                     "不要なファイルを削除してから、もう一度お試しください"
                 )
 

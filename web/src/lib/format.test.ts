@@ -8,7 +8,7 @@ describe("formatSeconds", () => {
         [59.6, "1分"],
         [83, "1分23秒"],
         [600, "10分"],
-    ])("%s 秒は %s", (seconds, text) => {
+    ])("%s秒は %s", (seconds, text) => {
         expect(formatSeconds(seconds)).toBe(text);
     });
 });

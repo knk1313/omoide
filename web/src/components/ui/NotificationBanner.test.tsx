@@ -6,7 +6,7 @@ import { Button } from "./Button";
 import { NotificationBanner } from "./NotificationBanner";
 
 describe("NotificationBanner", () => {
-    it("タイトルを h2 で描画し、アイコンは装飾になる", () => {
+    it("タイトルをh2で描画し、アイコンは装飾になる", () => {
         const { container } = render(<NotificationBanner type="success" title="保存しました" />);
         const heading = screen.getByRole("heading", { level: 2, name: "保存しました" });
         expect(heading).toHaveClass("font-bold", "text-17");
@@ -17,12 +17,12 @@ describe("NotificationBanner", () => {
         expect(container.firstElementChild).not.toHaveAttribute("role");
     });
 
-    it("as で見出しレベルを変えられる", () => {
+    it("asで見出しレベルを変えられる", () => {
         render(<NotificationBanner title="お知らせ" as="h3" />);
         expect(screen.getByRole("heading", { level: 3, name: "お知らせ" })).toBeInTheDocument();
     });
 
-    it("type ごとに枠線とアイコンの色が変わり、color-chip では左の帯が付く", () => {
+    it("typeごとに枠線とアイコンの色が変わり、color-chipでは左の帯が付く", () => {
         const { container, rerender } = render(<NotificationBanner type="error" title="A" />);
         expect(container.firstElementChild).toHaveClass("border-error");
         rerender(<NotificationBanner type="warning" style="color-chip" title="A" />);
@@ -34,15 +34,15 @@ describe("NotificationBanner", () => {
         expect(container.firstElementChild).toHaveClass("border-neutral");
     });
 
-    it("説明と年月日を描画し、年月日は <time> になる", () => {
-        render(<NotificationBanner title="メンテナンスのお知らせ" description={<p>4 月 1 日 2:00〜5:00 は利用できません。</p>} date="2026年3月25日" dateTime="2026-03-25" />);
-        expect(screen.getByText("4 月 1 日 2:00〜5:00 は利用できません。")).toBeInTheDocument();
+    it("説明と年月日を描画し、年月日は<time>になる", () => {
+        render(<NotificationBanner title="メンテナンスのお知らせ" description={<p>4月1日2:00〜5:00は利用できません。</p>} date="2026年3月25日" dateTime="2026-03-25" />);
+        expect(screen.getByText("4月1日2:00〜5:00は利用できません。")).toBeInTheDocument();
         const time = screen.getByText("2026年3月25日");
         expect(time.tagName).toBe("TIME");
         expect(time).toHaveAttribute("datetime", "2026-03-25");
     });
 
-    it("onClose を渡すと「閉じる」ボタンが出て、押すと呼ばれる", async () => {
+    it("onCloseを渡すと「閉じる」ボタンが出て、押すと呼ばれる", async () => {
         const user = userEvent.setup();
         const onClose = vi.fn();
         render(<NotificationBanner title="A" onClose={onClose} />);
@@ -72,20 +72,20 @@ describe("NotificationBanner", () => {
         expect(screen.getByRole("button", { name: "後で" })).toBeInTheDocument();
     });
 
-    it("live のときだけ role=status が付く", () => {
+    it("liveのときだけrole=statusが付く", () => {
         const { rerender } = render(<NotificationBanner title="A" live />);
         expect(screen.getByRole("status")).toBeInTheDocument();
         rerender(<NotificationBanner title="A" />);
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
-    it("live=\"assertive\" なら role=alert で、すぐ読み上げる（omoide での追加）", () => {
+    it("live=\"assertive\"ならrole=alertで、すぐ読み上げる（omoideでの追加）", () => {
         render(<NotificationBanner type="error" title="読み込めませんでした" live="assertive" />);
         expect(screen.getByRole("alert")).toHaveTextContent("読み込めませんでした");
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
-    it("className で拡張できる", () => {
+    it("classNameで拡張できる", () => {
         const { container } = render(<NotificationBanner title="A" className="mb-6" />);
         expect(container.firstElementChild).toHaveClass("mb-6", "border-info");
     });

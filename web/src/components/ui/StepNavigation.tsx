@@ -9,7 +9,7 @@ import { Icon } from "./Icon";
 //   - 完了（done）: キーカラー塗り + チェック、現在（current）: aria-current="step" + キーカラーの太枠、未到達: グレー枠。
 //   - スクリーンリーダー向けに「ステップ n / N（完了 / 現在）」を sr-only で読み上げる。番号・アイコンは装飾。
 //   - orientation: horizontal（横に並べて幅不足なら横スクロール）/ vertical（モバイル推奨）。
-// size="sm"（omoide での追加。docs/migration-decisions.md M-07）: 丸 32px・ラベル 16px・最小幅なしにし、スマホの幅に横 4 手順を収める。
+// size="sm"（omoideでの追加。web/README.mdの「テンプレートとの違い」）: 丸 32px・ラベル 16px・最小幅なしにし、スマホの幅に横 4 手順を収める。
 // 本テンプレートでは DADS の黒（solid-gray-800）ではなくキーカラーで現在地・完了を示し、他のナビゲーションの現在地表現と揃えた。
 
 export type Step = {
@@ -76,11 +76,12 @@ export function StepNavigation({ steps, current, orientation = "horizontal", siz
                             )}
                         >
                             <span className="sr-only">
-                                ステップ {i + 1} / {total}
+                                ステップ{i + 1} / {total}
                                 {STATE_LABEL[state] && `、${STATE_LABEL[state]}`}
                             </span>
                             <span
                                 aria-hidden="true"
+                                data-step-marker=""
                                 className={cn(
                                     // z-10: つなぐ線（::after）より前面に描き、線が丸の中に入り込まないようにする。
                                     "relative z-10 m-1 grid shrink-0 place-content-center rounded-full border-2 font-bold tracking-2",

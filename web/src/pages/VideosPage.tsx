@@ -120,7 +120,7 @@ export default function VideosPage() {
     async function deleteVideo(video: Video) {
         const ok = await confirm({
             title: `「${video.name}」を消しますか`,
-            message: "Mac から、動画のファイルと、そこから切り出したクリップ・サムネイル、選んだ内容と撮影日を消します。元に戻せません。",
+            message: "Macから、動画のファイルと、そこから切り出したクリップ・サムネイル、選んだ内容と撮影日を消します。元に戻せません。",
             confirmLabel: "消す",
             tone: "error",
         });
@@ -133,7 +133,7 @@ export default function VideosPage() {
         }
     }
 
-    const header = <PageHeader title="動画を取り込む" description="Setlog から書き出した動画を選び、撮影した日を入力してください。" />;
+    const header = <PageHeader title="動画を取り込む" description="Setlogから書き出した動画を選び、撮影した日を入力してください。" />;
 
     if (loadError || !project) {
         return (
@@ -193,7 +193,7 @@ export default function VideosPage() {
                 </h2>
                 {project.videos.length === 0 ? (
                     <Card>
-                        <EmptyState icon={Film} as="h3" title="まだありません" description="上のボタンから、Setlog の動画を選んでください。" className="py-8" />
+                        <EmptyState icon={Film} as="h3" title="まだありません" description="上のボタンから、Setlogの動画を選んでください。" className="py-8" />
                     </Card>
                 ) : (
                     <ul className="m-0 flex list-none flex-col gap-2 p-0">
@@ -215,11 +215,11 @@ export default function VideosPage() {
                 summary={
                     project.total_count > 0 ? (
                         <>
-                            動画 <span className="nums font-bold text-text-strong">{project.videos.length}</span> 本・パネル{" "}
-                            <span className="nums font-bold text-text-strong">{project.total_count}</span> 件
+                            動画<span className="nums font-bold text-text-strong">{project.videos.length}</span>本・パネル
+                            <span className="nums font-bold text-text-strong">{project.total_count}</span>件
                         </>
                     ) : (
-                        "動画を 1 本以上取り込んでください"
+                        "動画を1本以上取り込んでください"
                     )
                 }
             >
@@ -300,12 +300,12 @@ function DateCard({ video, videos, onSave }: { video: Video; videos: readonly Vi
         <Card padding="sm">
             <CardBody className="flex flex-col gap-4">
                 <p className="m-0">
-                    <span className="font-bold text-text-strong">{video.name}</span> を取り込みました（パネル <span className="nums">{video.panel_count}</span> 件）
+                    <span className="font-bold text-text-strong">{video.name}</span>を取り込みました（パネル<span className="nums">{video.panel_count}</span>件）
                 </p>
                 <FormField
                     label="この動画を撮影した日"
                     requirement="required"
-                    supportText={video.metadata_date ? `動画の情報から ${formatDay(video.metadata_date)} を入れています。違っていたら直してください。` : undefined}
+                    supportText={video.metadata_date ? `動画の情報から${formatDay(video.metadata_date)}を入れています。違っていたら直してください。` : undefined}
                     errorText={error ?? undefined}
                 >
                     <Input
@@ -364,12 +364,15 @@ function VideoRow({
                     <div className="flex min-w-0 flex-col">
                         <span className="truncate font-bold text-text-strong">{video.name}</span>
                         <span className="text-text-muted">
-                            パネル <span className="nums">{video.panel_count}</span> 件
+                            パネル<span className="nums">{video.panel_count}</span>件
                             {video.date ? "" : <span className="font-bold text-warning">・撮影日が未入力</span>}
                         </span>
                     </div>
                     {/* 送っている・読み取っている間は消さない（取り込みの結果と食い違うため） */}
-                    <IconButton icon={Trash2} label={`${video.name}を消す`} tone="error" className="-mt-2 -mr-2" disabled={disabled} onClick={onDelete} />
+                    {/* 名前（太字の 1 行目）と同じ高さの枠の中で上下中央に置く（テンプレートの D-21） */}
+                    <span className="flex h-lh shrink-0 items-center font-bold">
+                        <IconButton icon={Trash2} label={`${video.name}を消す`} tone="error" className="-mr-2" disabled={disabled} onClick={onDelete} />
+                    </span>
                 </div>
                 <label htmlFor={inputId} className="sr-only">
                     {video.name}の撮影日

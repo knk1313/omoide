@@ -18,8 +18,8 @@ const summary = () => screen.getByText("できあがりの長さ").parentElement
 describe("出力設定画面", () => {
     it("採用数と、選んでいる速度での長さを表示する", async () => {
         await openSettings();
-        expect(screen.getByText("採用したクリップ").parentElement).toHaveTextContent("2 件");
-        expect(summary()).toHaveTextContent("約 4秒");
+        expect(screen.getByText("採用したクリップ").parentElement).toHaveTextContent("2件");
+        expect(summary()).toHaveTextContent("約4秒");
         expect(radio(/^1x/)).toBeChecked();
     });
 
@@ -38,7 +38,7 @@ describe("出力設定画面", () => {
 
         expect(radio(/^2x/)).toBeChecked();
         expect(radio(/^1x/)).not.toBeChecked();
-        expect(summary()).toHaveTextContent("約 2秒");
+        expect(summary()).toHaveTextContent("約2秒");
         expect(server.calls.at(-1)).toEqual({ method: "PATCH", path: "/api/settings", body: { speed: 2 } });
     });
 
@@ -47,7 +47,7 @@ describe("出力設定画面", () => {
         await user.click(radio(/^0.5x/));
         expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした");
         expect(radio(/^1x/)).toBeChecked();
-        expect(summary()).toHaveTextContent("約 4秒");
+        expect(summary()).toHaveTextContent("約4秒");
     });
 
     it("プレビューを生成すると、生成を始めてプレビュー画面へ進む", async () => {
@@ -60,14 +60,14 @@ describe("出力設定画面", () => {
 
     it("生成を始められないときは、サーバーの理由を表示してこの画面に残る", async () => {
         const { user } = await openSettings({
-            "POST /api/preview": { status: 507, body: { detail: "Mac の空き容量が足りません。不要なファイルを削除してから、もう一度お試しください" } },
+            "POST /api/preview": { status: 507, body: { detail: "Macの空き容量が足りません。不要なファイルを削除してから、もう一度お試しください" } },
         });
         await user.click(screen.getByRole("button", { name: "プレビューを生成" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("空き容量が足りません");
         expect(screen.getByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
     });
 
-    it("1 件も選んでいなければ生成できず、選び直すよう案内する", async () => {
+    it("1件も選んでいなければ生成できず、選び直すよう案内する", async () => {
         await openSettings({ "GET /api/project": { status: 200, body: { ...sampleProject, selected_count: 0, estimated_seconds: 0 } } });
         expect(screen.getByRole("button", { name: "プレビューを生成" })).toBeDisabled();
         expect(screen.getByRole("alert")).toHaveTextContent("クリップ選択に戻って選んでください");
@@ -84,8 +84,8 @@ describe("出力設定画面", () => {
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
 
-    it("手順の表示は 3 番目", async () => {
+    it("手順の表示は3番目", async () => {
         await openSettings();
-        expect(currentStep()).toHaveTextContent(/ステップ 3 \/ 4、現在のステップ.*速度/);
+        expect(currentStep()).toHaveTextContent(/ステップ3 \/ 4、現在のステップ.*速度/);
     });
 });

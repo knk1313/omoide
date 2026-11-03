@@ -28,7 +28,7 @@ describe("クリップ選択画面", () => {
         // メタデータの日付（9月19日）ではなく、利用者が入力した日付（9月20日）
         const september = screen.getByRole("region", { name: /2026年9月20日/ });
         expect(within(september).getAllByRole("button", { pressed: true })).toHaveLength(1);
-        expect(within(september).getByRole("button", { name: "ユーザー3・クリップ 2（除外）" })).toHaveAttribute("aria-pressed", "false");
+        expect(within(september).getByRole("button", { name: "ユーザー3・クリップ2（除外）" })).toHaveAttribute("aria-pressed", "false");
         // 撮影日を入力していない動画は、そのことを見出しにする
         expect(screen.getByRole("region", { name: "撮影日が未入力" })).toHaveTextContent("oct");
     });
@@ -45,24 +45,24 @@ describe("クリップ選択画面", () => {
 
     it("採用数と推定時間を表示する", async () => {
         await openClips();
-        expect(summary()).toHaveTextContent("2 件を選択・約 4秒（1x）");
+        expect(summary()).toHaveTextContent("2件を選択・約4秒（1x）");
     });
 
     it("タップで除外し、サーバーに保存して数を更新する", async () => {
         const { server, user } = await openClips({ "PATCH /api/clips/sep/001-2": { status: 200 } });
-        await user.click(tile("ユーザー2・クリップ 1"));
+        await user.click(tile("ユーザー2・クリップ1"));
 
-        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "false");
-        expect(summary()).toHaveTextContent("1 件を選択・約 2秒");
+        expect(tile("ユーザー2・クリップ1")).toHaveAttribute("aria-pressed", "false");
+        expect(summary()).toHaveTextContent("1件を選択・約2秒");
         expect(server.calls.at(-1)).toEqual({ method: "PATCH", path: "/api/clips/sep/001-2", body: { selected: false } });
     });
 
     it("保存に失敗したら元に戻して知らせる", async () => {
         const { user } = await openClips({ "PATCH /api/clips/sep/002-3": { status: 500, body: { detail: "保存できませんでした" } } });
-        await user.click(tile("ユーザー3・クリップ 2"));
+        await user.click(tile("ユーザー3・クリップ2"));
 
         expect(await screen.findByRole("alert")).toHaveTextContent("保存できませんでした");
-        expect(tile("ユーザー3・クリップ 2")).toHaveAttribute("aria-pressed", "false");
+        expect(tile("ユーザー3・クリップ2")).toHaveAttribute("aria-pressed", "false");
     });
 
     it("全解除すると次へ進めず、全選択で戻る", async () => {
@@ -72,7 +72,7 @@ describe("クリップ選択画面", () => {
         await user.click(screen.getByRole("button", { name: "全解除" }));
         expect(screen.getAllByRole("button", { pressed: false })).toHaveLength(3);
         expect(screen.getByRole("button", { name: "次へ" })).toBeDisabled();
-        expect(screen.getByText("1 件以上選んでください")).toBeInTheDocument();
+        expect(screen.getByText("1件以上選んでください")).toBeInTheDocument();
         expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: false } });
 
         // 保存が終わるまでは全選択・全解除を押せない
@@ -91,7 +91,7 @@ describe("クリップ選択画面", () => {
         await user.click(within(filter).getByRole("radio", { name: /^ユーザー2/ }));
         expect(within(filter).getByRole("radio", { name: /^ユーザー2/ })).toBeChecked();
         expect(tiles().map((b) => b.getAttribute("aria-label"))).toEqual([
-            "ユーザー2・クリップ 1（採用）",
+            "ユーザー2・クリップ1（採用）",
         ]);
         // 表示していない動画の見出しは出さない
         expect(screen.queryByRole("region", { name: "撮影日が未入力" })).not.toBeInTheDocument();
@@ -107,9 +107,9 @@ describe("クリップ選択画面", () => {
         expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: false, panel: 2, only: false } });
 
         await user.click(screen.getByRole("radio", { name: /^全員/ }));
-        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "false");
+        expect(tile("ユーザー2・クリップ1")).toHaveAttribute("aria-pressed", "false");
         // ほかのユーザーはそのまま
-        expect(tile("ユーザー1・クリップ 1")).toHaveAttribute("aria-pressed", "true");
+        expect(tile("ユーザー1・クリップ1")).toHaveAttribute("aria-pressed", "true");
     });
 
     it("「ユーザー3だけ使う」で、そのユーザーを採用し、ほかを除外する", async () => {
@@ -119,10 +119,10 @@ describe("クリップ選択画面", () => {
         expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: true, panel: 3, only: true } });
 
         await user.click(screen.getByRole("radio", { name: /^全員/ }));
-        expect(tile("ユーザー3・クリップ 2")).toHaveAttribute("aria-pressed", "true");
-        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "false");
-        expect(tile("ユーザー1・クリップ 1")).toHaveAttribute("aria-pressed", "false");
-        expect(summary()).toHaveTextContent("1 件を選択");
+        expect(tile("ユーザー3・クリップ2")).toHaveAttribute("aria-pressed", "true");
+        expect(tile("ユーザー2・クリップ1")).toHaveAttribute("aria-pressed", "false");
+        expect(tile("ユーザー1・クリップ1")).toHaveAttribute("aria-pressed", "false");
+        expect(summary()).toHaveTextContent("1件を選択");
     });
 
     it("絞り込んでいないときは「だけ使う」を出さない", async () => {
@@ -132,9 +132,9 @@ describe("クリップ選択画面", () => {
 
     it("再生ボタンで、そのパネルだけをその場で再生する", async () => {
         const { user, container } = await openClips();
-        await user.click(screen.getByRole("button", { name: "ユーザー2・クリップ 1を再生" }));
+        await user.click(screen.getByRole("button", { name: "ユーザー2・クリップ1を再生" }));
 
-        const dialog = screen.getByRole("dialog", { name: "ユーザー2・クリップ 1の再生" });
+        const dialog = screen.getByRole("dialog", { name: "ユーザー2・クリップ1の再生" });
         const video = container.ownerDocument.querySelector("video");
         expect(dialog).toContainElement(video);
         expect(video).toHaveAttribute("src", "/media/clips/sep/001-2");
@@ -143,14 +143,14 @@ describe("クリップ選択画面", () => {
         await user.click(within(dialog).getByRole("button", { name: "閉じる" }));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         // 再生しても選択は変わらない
-        expect(tile("ユーザー2・クリップ 1")).toBeInTheDocument();
+        expect(tile("ユーザー2・クリップ1")).toBeInTheDocument();
     });
 
     it("長押しで再生し、そのタップでは選択を切り替えない", async () => {
         const { server } = await openClips();
         vi.useFakeTimers();
         try {
-            const target = tile("ユーザー2・クリップ 1");
+            const target = tile("ユーザー2・クリップ1");
             fireEvent.pointerDown(target, { clientX: 10, clientY: 10 });
             act(() => vi.advanceTimersByTime(600));
             fireEvent.pointerUp(target);
@@ -158,8 +158,8 @@ describe("クリップ選択画面", () => {
         } finally {
             vi.useRealTimers();
         }
-        expect(screen.getByRole("dialog", { name: "ユーザー2・クリップ 1の再生" })).toBeInTheDocument();
-        expect(tile("ユーザー2・クリップ 1")).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("dialog", { name: "ユーザー2・クリップ1の再生" })).toBeInTheDocument();
+        expect(tile("ユーザー2・クリップ1")).toHaveAttribute("aria-pressed", "true");
         expect(server.calls.some((c) => c.method === "PATCH")).toBe(false);
     });
 
@@ -167,7 +167,7 @@ describe("クリップ選択画面", () => {
         await openClips();
         vi.useFakeTimers();
         try {
-            const target = tile("ユーザー2・クリップ 1");
+            const target = tile("ユーザー2・クリップ1");
             fireEvent.pointerDown(target, { clientX: 10, clientY: 10 });
             fireEvent.pointerMove(target, { clientX: 10, clientY: 60 });
             act(() => vi.advanceTimersByTime(600));
@@ -204,13 +204,13 @@ describe("クリップ選択画面", () => {
 
     it("途中でログインが切れたら、パスワード画面へ移る", async () => {
         const { user } = await openClips({ "PATCH /api/clips/sep/001-2": { status: 401, body: { detail: "ログインしてください" } } });
-        await user.click(tile("ユーザー2・クリップ 1"));
+        await user.click(tile("ユーザー2・クリップ1"));
         expect(await screen.findByRole("heading", { name: "パスワードを入力" })).toBeInTheDocument();
     });
 
-    it("存在しないパネルの 404 では、QR コードの案内に切り替えない", async () => {
+    it("存在しないパネルの404では、QRコードの案内に切り替えない", async () => {
         const { user } = await openClips({ "PATCH /api/clips/sep/001-2": { status: 404, body: { detail: "パネルがありません" } } });
-        await user.click(tile("ユーザー2・クリップ 1"));
+        await user.click(tile("ユーザー2・クリップ1"));
         expect(await screen.findByRole("alert")).toHaveTextContent("パネルがありません");
         expect(screen.getByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
@@ -222,7 +222,7 @@ describe("クリップ選択画面", () => {
         await expectNoA11yViolations(document.body);
     });
 
-    it("パネルが 1 件も無ければ、動画を取り込む画面へ移る", async () => {
+    it("パネルが1件も無ければ、動画を取り込む画面へ移る", async () => {
         fakeServer({ ...loggedIn, "GET /api/clips": { status: 200, body: [] } });
         renderApp("/");
         expect(await screen.findByRole("heading", { name: "動画を取り込む" })).toBeInTheDocument();

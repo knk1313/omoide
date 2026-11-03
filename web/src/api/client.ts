@@ -21,7 +21,7 @@ export class ApiError extends Error {
     }
 }
 
-const NETWORK_ERROR = "Mac につながりません。Mac と同じ Wi-Fi に接続しているか、Mac でサーバーが動いているかを確かめてください";
+const NETWORK_ERROR = "Macにつながりません。Macと同じWi-Fiに接続しているか、Macでサーバーが動いているかを確かめてください";
 
 /**
  * 動画を送り、解析のジョブを返す。fetch では送った量が分からないので、XMLHttpRequest で進み具合（0〜1）を知らせる。

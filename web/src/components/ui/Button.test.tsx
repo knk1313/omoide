@@ -7,7 +7,7 @@ import { expectNoA11yViolations } from "@/test/axe";
 import { Button, ButtonLink } from "./Button";
 
 describe("Button", () => {
-    it("ラベルを描画し、クリックで onClick を呼ぶ", async () => {
+    it("ラベルを描画し、クリックでonClickを呼ぶ", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         render(<Button onClick={onClick}>保存</Button>);
@@ -17,7 +17,7 @@ describe("Button", () => {
         expect(onClick).toHaveBeenCalledTimes(1);
     });
 
-    it("Enter と Space で押せる", async () => {
+    it("EnterとSpaceで押せる", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         render(<Button onClick={onClick}>保存</Button>);
@@ -28,7 +28,7 @@ describe("Button", () => {
         expect(onClick).toHaveBeenCalledTimes(2);
     });
 
-    it("variant / size / tone に応じたクラスを付ける", () => {
+    it("variant / size / toneに応じたクラスを付ける", () => {
         const { rerender } = render(<Button>A</Button>);
         expect(screen.getByRole("button")).toHaveClass("bg-primary", "min-h-12");
         rerender(
@@ -47,7 +47,7 @@ describe("Button", () => {
         expect(screen.getByRole("button")).toHaveClass("text-14", "min-h-7");
     });
 
-    it("disabled のとき押せない", async () => {
+    it("disabledのとき押せない", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         render(
@@ -61,7 +61,7 @@ describe("Button", () => {
         expect(onClick).not.toHaveBeenCalled();
     });
 
-    it("loading のとき aria-busy になり、スピナーを出し、クリックしても onClick を呼ばない", async () => {
+    it("loadingのときaria-busyになり、スピナーを出し、クリックしてもonClickを呼ばない", async () => {
         const user = userEvent.setup();
         const onClick = vi.fn();
         render(
@@ -76,19 +76,19 @@ describe("Button", () => {
         expect(onClick).not.toHaveBeenCalled();
     });
 
-    it("アイコンは装飾として aria-hidden になる", () => {
+    it("アイコンは装飾としてaria-hiddenになる", () => {
         render(<Button leadIcon={Plus}>追加</Button>);
         const svg = screen.getByRole("button").querySelector("svg");
         expect(svg).toHaveAttribute("aria-hidden", "true");
         expect(screen.getByRole("button")).toHaveAccessibleName("追加");
     });
 
-    it("className で拡張できる", () => {
+    it("classNameで拡張できる", () => {
         render(<Button className="mt-4">A</Button>);
         expect(screen.getByRole("button")).toHaveClass("mt-4", "bg-primary");
     });
 
-    it("ButtonLink はリンクとして描画される", () => {
+    it("ButtonLinkはリンクとして描画される", () => {
         render(
             <MemoryRouter>
                 <ButtonLink to="/items" variant="outline">

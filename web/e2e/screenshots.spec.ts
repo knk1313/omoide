@@ -17,7 +17,7 @@ const SHOTS = [
 ] as const;
 
 for (const s of SHOTS) {
-    test(`${s.name} を撮る`, async ({ page }, info) => {
+    test(`${s.name}を撮る`, async ({ page }, info) => {
         await mockServer(page, { loggedIn: "loggedIn" in s ? s.loggedIn : true, jobSteps: 1 });
         await page.goto(s.path);
         await waitForHeading(page, s.h1);

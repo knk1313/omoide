@@ -188,11 +188,11 @@ export default function ClipsPage() {
                 summary={
                     selected.length > 0 ? (
                         <>
-                            <span className="nums font-bold text-text-strong">{selected.length}</span> 件を選択・約 {formatSeconds(seconds)}（
+                            <span className="nums font-bold text-text-strong">{selected.length}</span>件を選択・約{formatSeconds(seconds)}（
                             {data.project.speed}x）
                         </>
                     ) : (
-                        "1 件以上選んでください"
+                        "1件以上選んでください"
                     )
                 }
             >

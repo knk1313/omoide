@@ -1,16 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Button } from "./Button";
 import { Icon } from "./Icon";
 
 // トースト通知。DADS に該当コンポーネントがないため、ノティフィケーションバナーの縮小版として設計する（docs/decisions.md D-10）。
 //   - 画面右上（モバイルは下部中央）に固定表示、role="status"（aria-live="polite"）のリージョン
-//   - omoide での変更（docs/migration-decisions.md M-05）: モバイルでも上部に出す（下部に固定した主な操作と重ねない）。
+//   - omoideでの変更（web/README.mdの「テンプレートとの違い」）: モバイルでも上部に出す（下部に固定した主な操作と重ねない）。
 //     エラーは利用者が次の操作を変える必要があるため、1 件ずつ role="alert" で読み上げる
 //   - 意味色の枠 2px、角丸 8px、elevation-3、アイコン、閉じるボタン（固定表示には必ず閉じるボタンを付ける）
 //   - 8 秒で自動消去。ホバー・フォーカス中は止める。フォーカスがあるときは Esc で閉じる。同時表示は 3 件まで
+//   - 操作（「元に戻す」など）を付けたトーストは自動で消さない（押す前に消えると、キーボードや読み上げの利用者が操作できないため。WCAG 2.2.1）
+//   - action.focus を付けると、表示と同時に操作ボタンへフォーカスを移す（操作していた要素が消えたときの移し先にする）。
+//     フォーカスがトーストの中にあるまま閉じたときは、本文（main）へフォーカスを戻す
 //   const { toast } = useToast();
 //   toast({ type: "success", title: "保存しました" });
+//   toast({ type: "success", title: "削除しました", action: { label: "元に戻す", onClick: restore } });
 
 export type ToastType = "success" | "error" | "info";
 
@@ -18,11 +23,20 @@ export type ToastOptions = {
     title: string;
     description?: string;
     type?: ToastType;
-    /** 自動で消すまでのミリ秒。0 なら自動で消さない。既定は 8000。 */
+    /** 自動で消すまでのミリ秒。0 なら自動で消さない。既定は 8000（action があるときは 0）。 */
     duration?: number;
+    /** トーストに置く操作。押すとトーストを閉じてから onClick を呼ぶ。 */
+    action?: ToastAction;
 };
 
-type ToastItem = Required<Omit<ToastOptions, "description">> & { id: number; description?: string };
+export type ToastAction = {
+    label: string;
+    onClick: () => void;
+    /** 表示と同時に、このボタンへフォーカスを移す。 */
+    focus?: boolean;
+};
+
+type ToastItem = Required<Omit<ToastOptions, "description" | "action">> & { id: number; description?: string; action?: ToastAction };
 
 type ToastContextValue = {
     toast: (options: ToastOptions) => number;
@@ -33,7 +47,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function useToast(): ToastContextValue {
     const ctx = useContext(ToastContext);
-    if (!ctx) throw new Error("useToast は ToastProvider の内側で使ってください");
+    if (!ctx) throw new Error("useToastはToastProviderの内側で使ってください");
     return ctx;
 }
 
@@ -57,10 +71,10 @@ export function ToastProvider({ children }: ToastProviderProps) {
         setItems((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
-    const toast = useCallback(({ title, description, type = "info", duration = TOAST_DEFAULT_DURATION }: ToastOptions) => {
+    const toast = useCallback(({ title, description, type = "info", action, duration = action ? 0 : TOAST_DEFAULT_DURATION }: ToastOptions) => {
         const id = nextId.current++;
         // 上限を超えたら古いものから消す（画面を覆い尽くさないため）。
-        setItems((prev) => [...prev, { id, title, description, type, duration }].slice(-TOAST_MAX));
+        setItems((prev) => [...prev, { id, title, description, type, duration, action }].slice(-TOAST_MAX));
         return id;
     }, []);
 
@@ -89,7 +103,17 @@ export function ToastProvider({ children }: ToastProviderProps) {
 }
 
 function ToastView({ item, dismiss }: { item: ToastItem; dismiss: (id: number) => void }) {
-    const onDismiss = useCallback(() => dismiss(item.id), [dismiss, item.id]);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const actionRef = useRef<HTMLButtonElement>(null);
+    const onDismiss = useCallback(() => {
+        // フォーカスがトーストの中にあるまま消すと行き場を失うため、本文へ戻す
+        if (rootRef.current?.contains(document.activeElement)) document.getElementById("main")?.focus();
+        dismiss(item.id);
+    }, [dismiss, item.id]);
+    const focusAction = item.action?.focus ?? false;
+    useEffect(() => {
+        if (focusAction) actionRef.current?.focus();
+    }, [focusAction]);
     const TypeIcon = ICONS[item.type];
     const color = COLORS[item.type];
     // ホバー・フォーカス中は自動消去を止め、離れたら残り時間から再開する。
@@ -116,6 +140,7 @@ function ToastView({ item, dismiss }: { item: ToastItem; dismiss: (id: number) =
 
     return (
         <div
+            ref={rootRef}
             role={item.type === "error" ? "alert" : undefined}
             data-type={item.type}
             className={cn("pointer-events-auto flex items-start gap-2 rounded-8 border-2 bg-surface p-4 pr-2 text-16 leading-170 tracking-2 text-text shadow-3", color.frame)}
@@ -133,6 +158,20 @@ function ToastView({ item, dismiss }: { item: ToastItem; dismiss: (id: number) =
             <div className="min-w-0 flex-1">
                 <p className="m-0 font-bold text-text-strong">{item.title}</p>
                 {item.description && <p className="m-0 text-text-muted">{item.description}</p>}
+                {item.action && (
+                    <Button
+                        ref={actionRef}
+                        variant="text"
+                        size="sm"
+                        className="-ml-2 mt-1"
+                        onClick={() => {
+                            onDismiss();
+                            item.action?.onClick();
+                        }}
+                    >
+                        {item.action.label}
+                    </Button>
+                )}
             </div>
             <button
                 type="button"

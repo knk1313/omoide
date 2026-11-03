@@ -325,7 +325,7 @@ class VideosApiTest(ServerTestCase):
         def analyze(path):
             if path.read_bytes() == b"broken":
                 from setlog_join.jobs import AnalysisError
-                raise AnalysisError("Setlog の書き出し動画として読み取れませんでした")
+                raise AnalysisError("Setlogの書き出し動画として読み取れませんでした")
             self.analyzed.append(path)
             scan = _scan(path)
             return scan
@@ -368,7 +368,7 @@ class VideosApiTest(ServerTestCase):
     def test_failed_analysis_removes_the_file_and_explains(self):
         job = self.wait(self.upload("broken.mp4", b"broken").json())
         self.assertEqual(job["status"], "failed")
-        self.assertIn("Setlog の書き出し動画", job["error"])
+        self.assertIn("Setlogの書き出し動画", job["error"])
         self.assertFalse((self.upload_dir / "broken.mp4").exists())
 
     def test_thumbnail_failure_does_not_leave_the_job_running(self):
@@ -381,7 +381,7 @@ class VideosApiTest(ServerTestCase):
     def test_rejects_other_files(self):
         response = self.upload("photo.jpg", b"x")
         self.assertEqual(response.status_code, 415)
-        self.assertIn("MP4 か MOV", response.json()["detail"])
+        self.assertIn("MP4かMOV", response.json()["detail"])
 
     def test_upload_requires_login(self):
         self.client.post("/api/session/logout")
@@ -476,7 +476,7 @@ class ErrorResponseTest(ServerTestCase):
                 mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
             response = client.get("/api/project")
         self.assertEqual(response.status_code, 500)
-        self.assertIn("Mac 側で問題が起きました", response.json()["detail"])
+        self.assertIn("Mac側で問題が起きました", response.json()["detail"])
         self.assertNotIn("disk exploded", response.text)
         self.assertIn("disk exploded", stderr.getvalue())
 

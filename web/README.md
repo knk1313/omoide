@@ -42,15 +42,32 @@ E2EはMac側のサーバーを使わず、`e2e/mockServer.ts`がAPIの代わり�
 
 ## UIのもと
 
-UIは、デジタル庁デザインシステム（DADS）準拠のテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)をもとにしている。取り込み元のコミットは`feff468fb6ee3d5670e528bc0b3283dd046626fb`である。テンプレートとの差分は、このコミットと比べて追う。
+UIは、デジタル庁デザインシステム（DADS）準拠のテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)をもとにしている。取り込み元のコミットは`28286f9b8df793cacc30a2374220990f727ca366`（0.3.0）である。テンプレートの更新を取り込むときは、このコミットとの差分を見る。
 
 - トークン（`src/tokens/`）、UI部品（`src/components/ui/`）、検査スクリプト（`scripts/check-design-tokens.mjs`）は、テンプレートからコピーした。omoideが使う部品だけを取り込んでいる
+- E2Eの検査（`e2e/layout.ts`、`e2e/layout.spec.ts`、`e2e/a11y.spec.ts`）は、テンプレートのものをomoideの画面に合わせて使う。整列のずれ、フォーカスの隠れ、400%拡大、文字間隔、見出しの構造、強制カラーモードを確かめる
 - 色・文字の大きさ・寸法は、トークンのユーティリティクラスだけで書く。色コードと任意値クラス（`w-[13px]`など）の直書きは`npm run lint`で検出する
-- テンプレートにない部品（`ProgressBar`）を足した。理由は、ファイルの冒頭のコメントに書いた
-- omoideのために、テンプレートの部品に次の機能を足した。理由は、各ファイルの冒頭のコメントに書いた
-  - `StepNavigation`の`size="sm"`
-  - `NotificationBanner`の`live="assertive"`
-  - 画面の上部に出す`Toast`
+- 画面の文言は、テンプレートの文言のルールに従い、和文と半角の英数字の間に空白を入れない（例：`10件を選択`、`Macにつながりません`）
+
+### テンプレートとの違い
+
+omoideはスマホで4つの手順を順に進むアプリなので、管理画面向けのテンプレートと次の点を変えている。コードのコメントから、この節を参照している。
+
+| 違い | 理由 |
+| --- | --- |
+| サイドバーも上部のナビゲーションも使わず、`ShellHeader`と`StepNavigation`でヘッダーを組む。`ShellHeader.tsx`から`HamburgerButton`を除いた | メニューから選ぶ画面がなく、手順を順に進むため |
+| `StepNavigation`に`size="sm"`を足した（丸32px、最小幅なし） | テンプレートの寸法では、390pxの画面で横スクロールになるため |
+| 主な操作を、下部に固定した帯（`layouts/BottomBar.tsx`）に置く | どの画面でも主な操作の位置をそろえるため。テンプレートの「フォームの操作ボタンを固定しない」（D-20）とは異なる |
+| フォーカスが隠れないよう、`index.css`で下部の帯の高さの分を空ける（`scroll-padding-bottom`） | テンプレートは固定ヘッダーの分を上に空けるが、omoideはヘッダーを固定せず、下部の帯を固定するため |
+| `Toast`をスマホでも画面の上に出し、エラーは1件ずつ`role="alert"`にする | 下部の帯と重ねず、エラーをすぐ読み上げるため |
+| `NotificationBanner`に`live="assertive"`（`role="alert"`）を足した | 操作の結果のエラーを、すぐ読み上げるため |
+| `ProgressBar`を足した | テンプレートにない部品のため。DADSのプログレスインジケーターに従った |
+| 再生ボタンをサムネイルの下の行に置く（`pages/clips/ClipTile.tsx`） | 採用の切り替えと再生の当たり判定を重ねないため |
+| ログインの失敗は、入力欄の上のエラーのバナーで伝える | 入力欄が1つで、まとめとエラーテキストが同じ文言になるため |
+| `disabled`のボタンを残している（採用0件の「次へ」など） | 外すと入力の検査の振る舞いが変わるため。理由は近くの文言で示す |
+| `LoadError`の代わりに`components/app/PageStatus.tsx`の`LoadFailure`を使う | 読み込みの失敗を`role="alert"`ですぐ読み上げ、Macのserveを確かめる案内を添えるため |
+| `useUnsavedChangesWarning`を取り込まない | react-routerの`useBlocker`はデータルーター（`createBrowserRouter`）が必要で、omoideは`BrowserRouter`を使うため。アップロード中の離脱は`beforeunload`で確認している |
+| 見た目の回帰テスト（スクリーンショットの比較）を取り込まない | Linuxのコンテナでの実行が前提で、omoideのE2Eは数値の検査（整列・フォーカス・はみ出し）とaxeで足りるため |
 
 ## 構成
 

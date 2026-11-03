@@ -50,6 +50,7 @@ export function Radio({ children, size, invalid, className, disabled, ...props }
                     />
                     {/* 選択時の内側の点。input の擬似要素は使えないため兄弟要素で描く。 */}
                     <span
+                        data-control-mark=""
                         aria-hidden="true"
                         className={cn(
                             "pointer-events-none absolute hidden rounded-full peer-checked:block",

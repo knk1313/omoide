@@ -16,7 +16,7 @@ const OPTIONS = [
 function Controlled({ onChange }: { onChange?: (v: string) => void }) {
     const [value, setValue] = useState("");
     return (
-        <FormField label="連絡方法" as="fieldset" requirement="required" supportText="いずれか 1 つ">
+        <FormField label="連絡方法" as="fieldset" requirement="required" supportText="いずれか1つ">
             <RadioGroup
                 name="contact"
                 value={value}
@@ -33,14 +33,14 @@ function Controlled({ onChange }: { onChange?: (v: string) => void }) {
 describe("Radio", () => {
     it("ラベル付きで描画し、クリックで選択できる", async () => {
         const user = userEvent.setup();
-        render(<Radio name="a" value="1">選択肢 1</Radio>);
-        const radio = screen.getByRole("radio", { name: "選択肢 1" });
+        render(<Radio name="a" value="1">選択肢1</Radio>);
+        const radio = screen.getByRole("radio", { name: "選択肢1" });
         expect(radio).not.toBeChecked();
         await user.click(radio);
         expect(radio).toBeChecked();
     });
 
-    it("size / invalid / disabled に応じたクラスを付ける", () => {
+    it("size / invalid / disabledに応じたクラスを付ける", () => {
         const { rerender } = render(<Radio aria-label="A" size="sm" />);
         expect(screen.getByRole("radio")).toHaveClass("size-5", "border-2");
         rerender(<Radio aria-label="A" size="md" />);
@@ -54,10 +54,10 @@ describe("Radio", () => {
 });
 
 describe("RadioGroup + FormField(fieldset)", () => {
-    it("legend がグループ名になり、各 radio が同じ name を持つ", () => {
+    it("legendがグループ名になり、各radioが同じnameを持つ", () => {
         render(<Controlled />);
         const group = screen.getByRole("group", { name: /連絡方法/ });
-        expect(group).toHaveAccessibleDescription("いずれか 1 つ");
+        expect(group).toHaveAccessibleDescription("いずれか1つ");
         const radios = screen.getAllByRole("radio");
         expect(radios).toHaveLength(3);
         for (const r of radios) {
@@ -67,7 +67,7 @@ describe("RadioGroup + FormField(fieldset)", () => {
         expect(screen.getByRole("radio", { name: "郵送" })).toBeDisabled();
     });
 
-    it("クリックで onChange に値を渡し、選択が 1 つだけになる", async () => {
+    it("クリックでonChangeに値を渡し、選択が1つだけになる", async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();
         render(<Controlled onChange={onChange} />);
@@ -90,7 +90,7 @@ describe("RadioGroup + FormField(fieldset)", () => {
         expect(screen.getByRole("radio", { name: "SMS" })).toHaveFocus();
     });
 
-    it("非制御（defaultValue）と direction / エラーを反映する", () => {
+    it("非制御（defaultValue）とdirection / エラーを反映する", () => {
         render(
             <FormField label="A" as="fieldset" errorText="選択してください">
                 <RadioGroup name="a" defaultValue="sms" direction="horizontal" options={OPTIONS} />

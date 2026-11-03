@@ -24,3 +24,8 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 export async function waitForHeading(page: Page, name: string): Promise<void> {
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
 }
+
+/** 画面の読み込み（「〜を読み込んでいます」「確認しています」の表示）が終わるまで待つ。テンプレートの waitForLoaded を omoide の文言に合わせた。 */
+export async function waitForLoaded(page: Page): Promise<void> {
+    await expect(page.getByText(/^(読み込んでいます|確認しています)…?$/)).toHaveCount(0);
+}
