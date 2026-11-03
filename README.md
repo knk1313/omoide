@@ -42,6 +42,13 @@ python3 -m venv .venv
 
 `input/`・`output/`・`.setlog-join/` の中身は Git 管理外。
 
+## 使うときの注意
+
+- `serve` は、同じ Wi-Fi のスマホから見られるサーバーを Mac で開く。自宅など信頼できるネットワークで使い、カフェや駅などの公衆 Wi-Fi では使わない
+- サーバーは、起動時に決めるパスワード・QR コードの URL・有効期限（既定 2 時間）で守る。詳しくは [docs/security.md](docs/security.md) を参照
+- 動画は Mac の中だけで扱い、外部のサービスには送らない
+- Setlog の書き出し動画を前提にした個人用のツールで、Setlog とは関係がない
+
 ## 構成
 
 ```text
@@ -60,3 +67,7 @@ python3 -m venv .venv
 ```
 
 `web/` の UI は、デジタル庁デザインシステム（DADS）に準拠したテンプレート [workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)（コミット `feff468`）に基づく。開発方法は [web/README.md](web/README.md) を参照。
+
+## ライセンス
+
+[MIT License](LICENSE)
