@@ -15,6 +15,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useToast } from "@/components/ui/Toast";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatDay } from "@/lib/format";
+import { localToday, videoDateProblem } from "@/lib/videoDate";
 import { useSession } from "@/session/Session";
 import { isTransient, polling } from "./preview/useJob";
 
@@ -99,16 +100,16 @@ export default function VideosPage() {
         }
     }
 
-    // 撮影日を保存し、一覧を新しくする
-    async function saveDate(video: Video, date: string): Promise<boolean> {
+    // 撮影日を保存し、一覧を新しくする。保存できなければ、入力欄の下に出す理由を返す（ログイン切れなどは画面ごと切り替えるので null）
+    async function saveDate(video: Video, date: string): Promise<SaveResult> {
         try {
             const saved = await api.setVideoDate(video.name, date || null);
             setProject(await api.project());
             toast({ title: `${saved.date ? formatDay(saved.date) : "撮影日"}にしました`, type: "success" });
-            return true;
+            return { ok: true };
         } catch (error) {
-            if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "保存できませんでした", type: "error" });
-            return false;
+            if (handleError(error)) return { ok: false, message: null };
+            return { ok: false, message: error instanceof ApiError ? error.message : "保存できませんでした。もう一度お試しください" };
         }
     }
 
@@ -151,8 +152,11 @@ export default function VideosPage() {
             {upload ? (
                 <UploadStatus
                     upload={upload}
+                    videos={project.videos}
                     onSaveDate={async (video, date) => {
-                        if (await saveDate(video, date)) setUpload(null);
+                        const result = await saveDate(video, date);
+                        if (result.ok) setUpload(null);
+                        return result;
                     }}
                     onRetry={() => fileInput.current?.click()}
                     onDismiss={() => setUpload(null)}
@@ -174,7 +178,7 @@ export default function VideosPage() {
                 ) : (
                     <ul className="m-0 flex list-none flex-col gap-2 p-0">
                         {project.videos.map((video) => (
-                            <VideoRow key={video.name} video={video} disabled={busy} onSave={(date) => void saveDate(video, date)} />
+                            <VideoRow key={video.name} video={video} videos={project.videos} disabled={busy} onSave={(date) => saveDate(video, date)} />
                         ))}
                     </ul>
                 )}
@@ -202,17 +206,19 @@ export default function VideosPage() {
 
 function UploadStatus({
     upload,
+    videos,
     onSaveDate,
     onRetry,
     onDismiss,
 }: {
     upload: Upload;
-    onSaveDate: (video: Video, date: string) => Promise<void>;
+    videos: readonly Video[];
+    onSaveDate: (video: Video, date: string) => Promise<SaveResult>;
     onRetry: () => void;
     onDismiss: () => void;
 }) {
     if (upload.stage === "date") {
-        return <DateCard video={upload.video} onSave={onSaveDate} />;
+        return <DateCard video={upload.video} videos={videos} onSave={onSaveDate} />;
     }
     if (upload.stage === "failed") {
         return (
@@ -246,9 +252,23 @@ function UploadStatus({
 }
 
 // 取り込んだ直後に、撮影日を確かめてもらう。初期値は動画のメタデータの日付
-function DateCard({ video, onSave }: { video: Video; onSave: (video: Video, date: string) => Promise<void> }) {
+function DateCard({ video, videos, onSave }: { video: Video; videos: readonly Video[]; onSave: (video: Video, date: string) => Promise<SaveResult> }) {
     const [date, setDate] = useState(video.date ?? video.metadata_date ?? "");
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const today = localToday();
+
+    async function save() {
+        // 送る前に、その場で分かる誤り（空・明日以降・ほかの動画と同じ日付）を知らせる
+        const problem = videoDateProblem(date, video.name, videos, today);
+        setError(problem);
+        if (problem) return;
+        setSaving(true);
+        const result = await onSave(video, date);
+        setSaving(false);
+        if (!result.ok) setError(result.message);
+    }
+
     return (
         <Card padding="sm">
             <CardBody className="flex flex-col gap-4">
@@ -257,21 +277,21 @@ function DateCard({ video, onSave }: { video: Video; onSave: (video: Video, date
                 </p>
                 <FormField
                     label="この動画を撮影した日"
+                    requirement="required"
                     supportText={video.metadata_date ? `動画の情報から ${formatDay(video.metadata_date)} を入れています。違っていたら直してください。` : undefined}
+                    errorText={error ?? undefined}
                 >
-                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                    <Input
+                        type="date"
+                        value={date}
+                        max={today}
+                        onChange={(e) => {
+                            setDate(e.target.value);
+                            setError(null);
+                        }}
+                    />
                 </FormField>
-                <Button
-                    size="lg"
-                    block
-                    loading={saving}
-                    disabled={!date}
-                    onClick={async () => {
-                        setSaving(true);
-                        await onSave(video, date);
-                        setSaving(false);
-                    }}
-                >
+                <Button size="lg" block loading={saving} onClick={() => void save()}>
                     この日付にする
                 </Button>
             </CardBody>
@@ -279,11 +299,38 @@ function DateCard({ video, onSave }: { video: Video; onSave: (video: Video, date
     );
 }
 
-function VideoRow({ video, disabled, onSave }: { video: Video; disabled: boolean; onSave: (date: string) => void }) {
+// 取り込んだ動画 1 本。名前の下の行に撮影日の入力欄を置き、どの動画でも同じ並びにする。
+// 選んだらすぐ保存する。保存できない日付は送らず、入力欄の下に理由を出す
+function VideoRow({
+    video,
+    videos,
+    disabled,
+    onSave,
+}: {
+    video: Video;
+    videos: readonly Video[];
+    disabled: boolean;
+    onSave: (date: string) => Promise<SaveResult>;
+}) {
     const inputId = `video-date-${video.name}`;
+    const errorId = `${inputId}-error`;
+    // 入力していなければ、メタデータの日付を初期値として見せる
+    const [value, setValue] = useState(video.date ?? video.metadata_date ?? "");
+    const [error, setError] = useState<string | null>(null);
+    const today = localToday();
+
+    async function change(next: string) {
+        setValue(next);
+        const problem = videoDateProblem(next, video.name, videos, today);
+        setError(problem);
+        if (problem) return;
+        const result = await onSave(next);
+        if (!result.ok) setError(result.message);
+    }
+
     return (
         <Card as="li" padding="sm">
-            <CardBody className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <CardBody className="flex flex-col gap-2">
                 <div className="flex min-w-0 flex-col">
                     <span className="truncate font-bold text-text-strong">{video.name}</span>
                     <span className="text-text-muted">
@@ -298,17 +345,22 @@ function VideoRow({ video, disabled, onSave }: { video: Video; disabled: boolean
                     id={inputId}
                     type="date"
                     size="sm"
-                    block={false}
-                    // iOS Safari では日付入力の幅が内容で決まらないので、日付が収まる幅を決めておく
-                    className="w-44"
-                    // 入力していなければ、メタデータの日付を初期値として見せる
-                    defaultValue={video.date ?? video.metadata_date ?? ""}
+                    value={value}
+                    max={today}
                     disabled={disabled}
-                    onChange={(e) => {
-                        if (e.target.value) onSave(e.target.value);
-                    }}
+                    invalid={error !== null}
+                    aria-describedby={error ? errorId : undefined}
+                    onChange={(e) => void change(e.target.value)}
                 />
+                {/* DADS のエラーテキスト（＊で始め、role="alert" は付けない） */}
+                {error && (
+                    <p id={errorId} className="m-0 leading-130 tracking-0 text-error">
+                        ＊{error}
+                    </p>
+                )}
             </CardBody>
         </Card>
     );
 }
+
+type SaveResult = { ok: true } | { ok: false; message: string | null };

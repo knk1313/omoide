@@ -53,6 +53,13 @@ afterEach(() => {
     polling.intervalMs = 700;
 });
 
+/** 端末の明日の日付（`2026-11-05`）。 */
+function tomorrow(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 async function openVideos(routes: Parameters<typeof fakeServer>[0] = {}) {
     const server = fakeServer({ ...loggedIn, ...routes });
     const app = renderApp("/videos");
@@ -99,7 +106,7 @@ describe("動画を取り込む画面", () => {
         expect(sent.headers["X-File-Name"]).toBe(encodeURIComponent("11月.mov"));
         finished = true;
 
-        const date = await screen.findByLabelText("この動画を撮影した日");
+        const date = await screen.findByLabelText(/^この動画を撮影した日/);
         expect(date).toHaveValue("2026-11-01");
         expect(screen.getByText(/動画の情報から 2026年11月1日/)).toBeInTheDocument();
 
@@ -110,7 +117,7 @@ describe("動画を取り込む画面", () => {
 
         await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2026年10月31日(土)にしました"));
         await waitFor(() => expect(screen.getByLabelText("novの撮影日")).toHaveValue("2026-10-31"));
-        expect(screen.queryByLabelText("この動画を撮影した日")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/^この動画を撮影した日/)).not.toBeInTheDocument();
     });
 
     it("受け取れない動画は、サーバーの理由を表示して選び直せる", async () => {
@@ -151,8 +158,69 @@ describe("動画を取り込む画面", () => {
         await expectNoA11yViolations(container);
         fakeUpload(202, analyzeJob("queued"));
         chooseFile();
-        await screen.findByLabelText("この動画を撮影した日");
+        await screen.findByLabelText(/^この動画を撮影した日/);
         await expectNoA11yViolations(container);
+    });
+
+    it("明日以降の撮影日は送らずに、入力欄の下に理由を出す", async () => {
+        const { server, user } = await openVideos({ "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("done", { result: newVideo }) } });
+        fakeUpload(202, analyzeJob("queued"));
+        chooseFile();
+        const date = await screen.findByLabelText(/^この動画を撮影した日/);
+        fireEvent.change(date, { target: { value: tomorrow() } });
+        server.calls.length = 0;
+        await user.click(screen.getByRole("button", { name: "この日付にする" }));
+        expect(date).toHaveAttribute("aria-invalid", "true");
+        expect(date).toHaveAccessibleDescription(/明日以降の日付は入力できません/);
+        expect(server.calls.some((c) => c.method === "PATCH")).toBe(false);
+    });
+
+    it("ほかの動画と同じ撮影日は送らずに、どの動画の日付かを示す", async () => {
+        const { user } = await openVideos({ "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("done", { result: newVideo }) } });
+        fakeUpload(202, analyzeJob("queued"));
+        chooseFile();
+        const date = await screen.findByLabelText(/^この動画を撮影した日/);
+        fireEvent.change(date, { target: { value: "2026-09-20" } });
+        await user.click(screen.getByRole("button", { name: "この日付にする" }));
+        expect(date).toHaveAccessibleDescription(/「sep」の撮影日になっています/);
+    });
+
+    it("サーバーが断った理由も、入力欄の下に出す", async () => {
+        const { user } = await openVideos({
+            "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("done", { result: newVideo }) },
+            "PATCH /api/videos/nov": { status: 409, body: { detail: "2026年10月1日は「dec」の撮影日になっています" } },
+        });
+        fakeUpload(202, analyzeJob("queued"));
+        chooseFile();
+        const date = await screen.findByLabelText(/^この動画を撮影した日/);
+        fireEvent.change(date, { target: { value: "2026-10-01" } });
+        await user.click(screen.getByRole("button", { name: "この日付にする" }));
+        await waitFor(() => expect(date).toHaveAccessibleDescription(/「dec」の撮影日になっています/));
+        // 入力欄は残り、直して送り直せる
+        expect(screen.getByRole("button", { name: "この日付にする" })).toBeInTheDocument();
+    });
+
+    it("一覧で、ほかの動画と同じ日付や明日以降を選ぶと、保存せずに理由を出す", async () => {
+        const { server } = await openVideos();
+        const oct = screen.getByLabelText("octの撮影日");
+        fireEvent.change(oct, { target: { value: "2026-09-20" } });
+        expect(oct).toHaveAttribute("aria-invalid", "true");
+        expect(oct).toHaveAccessibleDescription(/「sep」の撮影日になっています/);
+        fireEvent.change(oct, { target: { value: tomorrow() } });
+        expect(oct).toHaveAccessibleDescription(/明日以降の日付は入力できません/);
+        expect(server.calls.some((c) => c.method === "PATCH")).toBe(false);
+    });
+
+    it("一覧の日付欄は、どの動画でも名前の下の行に置く", async () => {
+        await openVideos();
+        for (const name of ["sep", "oct"]) {
+            const input = screen.getByLabelText(`${name}の撮影日`);
+            const row = input.closest("li")!;
+            // 名前の行の後に、入力欄が来る（横に並べない）
+            expect(input.parentElement).toHaveClass("flex-col");
+            expect(row).toHaveTextContent(name);
+            expect(input).toHaveClass("w-full");
+        }
     });
 
     it("一覧から撮影日を直せる", async () => {

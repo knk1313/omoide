@@ -42,6 +42,23 @@ test("動画をアップロードし、撮影日を入れると一覧に加わ�
     await expect(page.getByText(/2026年11月2日.*にしました/)).toBeVisible();
 });
 
+test("撮影日にほかの動画と同じ日付や明日以降を選ぶと、保存せずに理由を出す", async ({ page }) => {
+    const { calls } = await mockServer(page);
+    await page.goto("/videos");
+    const oct = page.getByLabel("20261012の撮影日");
+    await oct.fill("2026-09-20");
+    await expect(oct).toHaveAttribute("aria-invalid", "true");
+    await expect(page.getByText(/「20260919」の撮影日になっています/)).toBeVisible();
+    await oct.fill("2099-01-01");
+    await expect(page.getByText(/明日以降の日付は入力できません/)).toBeVisible();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+    await expectNoAxeViolations(page, "撮影日のエラー");
+
+    await oct.fill("2026-10-12");
+    await expect(oct).not.toHaveAttribute("aria-invalid");
+    await expect(page.getByText(/2026年10月12日.*にしました/)).toBeVisible();
+});
+
 test("アップロードに失敗したら、理由を表示して選び直せる", async ({ page }) => {
     await mockServer(page, { failOnce: { "POST /api/videos": [415, "MP4 か MOV の動画を選んでください"] } });
     await page.goto("/videos");

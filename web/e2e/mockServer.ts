@@ -140,6 +140,10 @@ export async function mockServer(page: Page, options: MockOptions = {}) {
         }
         if (method === "PATCH" && path.startsWith("/api/videos/")) {
             const name = decodeURIComponent(path.slice("/api/videos/".length));
+            // サーバーと同じく、ほかの動画と同じ撮影日は 409 で断る
+            const date = (body as { date: string | null }).date;
+            const other = videos.find((v) => v.name !== name && date !== null && v.date === date);
+            if (other) return json(route, 409, { detail: `その日付は「${other.name}」の撮影日になっています` });
             videos = videos.map((v) => (v.name === name ? { ...v, date: (body as { date: string | null }).date } : v));
             return json(route, 200, videos.find((v) => v.name === name));
         }
