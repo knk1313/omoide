@@ -28,6 +28,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # requirements.txt は「>=」で範囲を指定しているので、新しい版が範囲に入らないときだけ PR を出す（下限を上げるだけの PR は出さない）
+    versioning-strategy: increase-if-necessary
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
