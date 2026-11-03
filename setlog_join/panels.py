@@ -13,7 +13,8 @@ from . import ffmpeg
 from .probe import VideoInfo
 
 PANEL_COUNT = 3
-PANEL_LABELS = ("上", "中", "下")
+# 上から順に、書き出しに並んでいる人を呼ぶ名前
+PANEL_LABELS = ("ユーザー1", "ユーザー2", "ユーザー3")
 
 # 背景 (輝度 0) とカード (空でも輝度 20 前後) を分けるしきい値
 _BACKGROUND_MAX = 8

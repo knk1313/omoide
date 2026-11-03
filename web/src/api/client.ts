@@ -1,4 +1,4 @@
-import type { Job, JobKind, PanelClip, Project, Speed } from "./types";
+import type { Job, JobKind, PanelClip, Project, Speed, Video } from "./types";
 
 /** API がエラーを返した。status で場面を見分け、detail をそのまま利用者に見せてよい。 */
 export class ApiError extends Error {
@@ -23,8 +23,47 @@ export class ApiError extends Error {
 
 const NETWORK_ERROR = "Mac につながりません。Mac と同じ Wi-Fi に接続しているか、Mac でサーバーが動いているかを確かめてください";
 
+/**
+ * 動画を送り、解析のジョブを返す。fetch では送った量が分からないので、XMLHttpRequest で進み具合（0〜1）を知らせる。
+ */
+export function uploadVideo(file: File, onProgress: (sent: number) => void): Promise<Job> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/videos");
+        // 日本語などを含む名前も送れるよう、URL エンコードする
+        xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) onProgress(e.loaded / e.total);
+        };
+        xhr.onload = () => {
+            let body: unknown = null;
+            try {
+                body = JSON.parse(xhr.responseText);
+            } catch {
+                // JSON でない応答は、下で文言を付ける
+            }
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(body as Job);
+                return;
+            }
+            const detail =
+                body && typeof body === "object" && "detail" in body && typeof body.detail === "string"
+                    ? body.detail
+                    : `エラーが発生しました（${xhr.status}）`;
+            reject(new ApiError(xhr.status, detail));
+        };
+        xhr.onerror = () => reject(new ApiError(0, NETWORK_ERROR));
+        xhr.send(file);
+    });
+}
+
+/** API の要求を打ち切るまでの時間。Mac がスリープした直後は、応答が返らないまま待たされるため。 */
+export const requestTimeout = { ms: 15_000 };
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let response: Response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), requestTimeout.ms);
     try {
         response = await fetch(path, {
             method,
@@ -32,9 +71,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
             credentials: "same-origin",
             headers: body === undefined ? undefined : { "Content-Type": "application/json" },
             body: body === undefined ? undefined : JSON.stringify(body),
+            signal: controller.signal,
         });
     } catch {
+        // 打ち切った場合も、つながらない場合と同じに扱う
         throw new ApiError(0, NETWORK_ERROR);
+    } finally {
+        clearTimeout(timer);
     }
     if (!response.ok) {
         throw new ApiError(response.status, await errorDetail(response));
@@ -64,9 +107,13 @@ export const api = {
     setSelected: (id: string, selected: boolean) =>
         // ID の「/」は API のパスの区切りとしてそのまま渡す（docs/api.md）
         request<PanelClip>("PATCH", `/api/clips/${id.split("/").map(encodeURIComponent).join("/")}`, { selected }),
-    selectAll: (selected: boolean) => request<Project>("POST", "/api/clips/select-all", { selected }),
+    /** まとめて採用・除外する。panel でユーザーを絞り、only なら対象以外を除外する。 */
+    selectAll: (selected: boolean, options: { panel?: number; only?: boolean } = {}) =>
+        request<Project>("POST", "/api/clips/select-all", { selected, ...options }),
     setSpeed: (speed: Speed) => request<Project>("PATCH", "/api/settings", { speed }),
-    startJob: (kind: JobKind) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
+    setVideoDate: (name: string, date: string | null) =>
+        request<Video>("PATCH", `/api/videos/${encodeURIComponent(name)}`, { date }),
+    startJob: (kind: Exclude<JobKind, "analyze">) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
     job: (id: string) => request<Job>("GET", `/api/jobs/${encodeURIComponent(id)}`),
     clearTemporary: () => request<{ status: "ok" }>("DELETE", "/api/temporary"),
 };

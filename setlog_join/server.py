@@ -1,16 +1,22 @@
 """スマホから操作するためのローカルサーバー。ビルド済みの UI と API を配信する。"""
 
+import sys
+import traceback
 from pathlib import Path
+from urllib.parse import unquote
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.requests import ClientDisconnect
 from starlette.types import Scope
 
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
-from .jobs import InsufficientSpace, JobManager, JobsBusy, NothingSelected
+from .jobs import Analyzer, InsufficientSpace, JobManager, JobsBusy, NothingSelected, analyze_video
+from .uploads import UploadError, save_upload, upload_path
 from .workspace import PanelEntry, Workspace
 
 WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -48,16 +54,47 @@ class SelectionRequest(BaseModel):
     selected: bool
 
 
+class BulkSelectionRequest(BaseModel):
+    selected: bool
+    # 上から 1・2・3。省略すると全員
+    panel: int | None = Field(default=None, ge=1, le=3)
+    # True なら、対象のユーザーを採用し、それ以外を除外する
+    only: bool = False
+
+
+class VideoDateRequest(BaseModel):
+    # `2026-09-19` の形。null なら入力を消し、メタデータの日付に戻す
+    date: str | None
+
+
 class SettingsRequest(BaseModel):
     speed: float
 
 
 def create_app(
     workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST, jobs: JobManager | None = None,
+    upload_dir: Path = Path("input"), analyze: Analyzer = analyze_video,
 ) -> FastAPI:
     jobs = jobs or JobManager(workspace)
     # API の仕様書の画面は使わないので公開しない
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # 検証の詳細の一覧ではなく、利用者が次に取る操作を返す
+        return JSONResponse(
+            {"detail": "送られた内容が正しくありません。画面を再読み込みしてから、もう一度お試しください"},
+            status_code=422,
+        )
+
+    @app.exception_handler(Exception)
+    async def unexpected(request: Request, exc: Exception) -> JSONResponse:
+        # 原因は Mac のターミナルに残し、画面には次に取る操作だけを返す
+        traceback.print_exception(exc, file=sys.stderr)
+        return JSONResponse(
+            {"detail": "Mac 側で問題が起きました。もう一度お試しください。続くときは、Mac のターミナルの表示を確かめてください"},
+            status_code=500,
+        )
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
@@ -125,8 +162,8 @@ def create_app(
         return _clip_json(workspace, entry)
 
     @app.post("/api/clips/select-all")
-    def select_all(body: SelectionRequest) -> dict:
-        workspace.select_all(body.selected)
+    def select_all(body: BulkSelectionRequest) -> dict:
+        workspace.select_all(body.selected, panel=body.panel, only=body.only)
         return workspace.summary()
 
     @app.patch("/api/settings")
@@ -136,6 +173,30 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         return workspace.summary()
+
+    @app.post("/api/videos", status_code=202)
+    async def upload_video(request: Request) -> dict:
+        # 元のファイル名は、日本語などを含められるよう URL エンコードして X-File-Name で受け取る
+        raw_name = unquote(request.headers.get("x-file-name", ""))
+        length = request.headers.get("content-length")
+        try:
+            destination = upload_path(raw_name, upload_dir)
+            await save_upload(request.stream(), int(length) if length and length.isdigit() else None, destination)
+        except UploadError as e:
+            raise HTTPException(status_code=e.status, detail=str(e)) from e
+        except ClientDisconnect:
+            raise HTTPException(status_code=400, detail="送っている途中で接続が切れました。もう一度お試しください") from None
+        return jobs.start_analysis(destination, analyze).to_json()
+
+    @app.patch("/api/videos/{name}")
+    def update_video(name: str, body: VideoDateRequest) -> dict:
+        try:
+            workspace.set_video_date(name, body.date)
+            return workspace.video_json(workspace.find_video(name))
+        except KeyError:
+            raise HTTPException(status_code=404, detail="動画がありません") from None
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
 
     @app.post("/api/preview", status_code=202)
     def start_preview() -> dict:
@@ -168,12 +229,12 @@ def create_app(
         return FileResponse(job.path, media_type="video/mp4")
 
     @app.get("/download/output")
-    def download() -> FileResponse:
+    def download(name: str | None = None) -> FileResponse:
         job = jobs.latest_done("export")
         if job is None:
             raise HTTPException(status_code=404, detail="完成版がまだありません")
-        # スマホで再生画面ではなく保存に進むよう、添付ファイルとして返す
-        return FileResponse(job.path, media_type="video/mp4", filename=job.path.name)
+        # スマホで再生画面ではなく保存に進むよう、添付ファイルとして返す。名前は利用者が決めたものにする
+        return FileResponse(job.path, media_type="video/mp4", filename=download_name(name, job.path.stem))
 
     @app.get("/media/thumbnails/{panel_id:path}")
     def thumbnail(panel_id: str) -> FileResponse:
@@ -200,6 +261,17 @@ def create_app(
             return _NOT_BUILT_HTML
 
     return app
+
+
+_MAX_NAME_LENGTH = 80
+
+
+def download_name(name: str | None, fallback: str) -> str:
+    """保存するファイル名。パスの区切りや制御文字を除き、長さを抑えて .mp4 を付ける。"""
+    cleaned = "".join(c for c in (name or "") if c.isprintable() and c not in '/\\:*?"<>|').strip().strip(".")
+    if cleaned.lower().endswith(".mp4"):
+        cleaned = cleaned[:-4].rstrip()
+    return f"{(cleaned or fallback)[:_MAX_NAME_LENGTH]}.mp4"
 
 
 def _start(jobs: JobManager, kind: str) -> dict:

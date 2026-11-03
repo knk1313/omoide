@@ -7,6 +7,12 @@ export function formatDate(iso: string): string {
     return dateFormatter.format(new Date(iso));
 }
 
+/** `2026-09-19` を「2026年9月19日(土)」の形にする。端末のタイムゾーンで日がずれないよう、その日の 0 時として読む。 */
+export function formatDay(day: string): string {
+    const [y, m, d] = day.split("-").map(Number);
+    return dateFormatter.format(new Date(y, m - 1, d));
+}
+
 /** 秒を「46秒」「1分23秒」の形にする。 */
 export function formatSeconds(seconds: number): string {
     const total = Math.round(seconds);

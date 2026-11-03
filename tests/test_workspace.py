@@ -67,6 +67,17 @@ class WorkspaceTest(unittest.TestCase):
         self.workspace.select_all(True)
         self.assertEqual(self.workspace.summary()["selected_count"], 3)
 
+    def test_select_all_for_one_user(self):
+        self.workspace.select_all(False, panel=1)
+        self.assertEqual(self.workspace.project.excluded, {"sep/001-1"})
+        self.workspace.select_all(True, panel=1)
+        self.assertEqual(self.workspace.project.excluded, set())
+
+    def test_use_only_one_user(self):
+        self.workspace.select_all(True, panel=3, only=True)
+        self.assertEqual(self.workspace.project.excluded, {"sep/001-1", "sep/002-2"})
+        self.assertEqual(self.workspace.summary()["selected_count"], 1)
+
     def test_summary_estimates_the_length_at_the_chosen_speed(self):
         self.workspace.set_speed(2.0)
         summary = self.workspace.summary()

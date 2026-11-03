@@ -22,6 +22,7 @@ python3 -m venv .venv
 
 # 同じ Wi-Fi のスマホから操作するサーバーを起動する (先に画面をビルドしておく: cd web && npm run build)
 # 起動するとパスワードを聞かれ、URL と QR コードが表示される。既定では 2 時間で終了する
+# 動画はスマホからアップロードでき、input/ に置いた動画も読み込む
 .venv/bin/python main.py serve --expires 2h
 ```
 

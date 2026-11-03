@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Job } from "@/api/types";
 import { fakeServer, loggedIn } from "@/test/fakeServer";
@@ -6,7 +6,7 @@ import { renderApp } from "@/test/renderApp";
 import { polling } from "./preview/useJob";
 
 const job = (kind: Job["kind"], status: Job["status"], progress: number, extra: Partial<Job> = {}): Job => ({
-    id: `${kind}-1`, kind, status, progress, error: null,
+    id: `${kind}-1`, kind, status, progress, error: null, result: null,
     url: status === "done" ? (kind === "preview" ? "/media/preview?v=preview-1" : "/download/output") : null,
     ...extra,
 });
@@ -98,8 +98,14 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
 
         const save = await screen.findByRole("link", { name: "保存する" });
-        expect(save).toHaveAttribute("href", "/download/output");
         expect(save).toHaveAttribute("download");
+        // 名前の初期値は omoide-<今日の日付>。変えると保存の名前も変わる
+        const name = screen.getByLabelText("ファイル名");
+        expect((name as HTMLInputElement).value).toMatch(/^omoide-\d{8}$/);
+        await user.clear(name);
+        await user.type(name, "9月の旅行");
+        expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
+        expect(save).toHaveAttribute("download", "9月の旅行.mp4");
         expect(screen.getByText("完成版ができました")).toBeInTheDocument();
     });
 
@@ -113,6 +119,27 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(checks.join("\n")).toMatch(/同じ Wi-Fi/);
         expect(checks.join("\n")).toMatch(/スリープ/);
         expect(checks.join("\n")).toMatch(/serve が動いているか/);
+    });
+
+    it("Wi-Fi が一瞬途切れただけなら、作業を止めずに取り直す", async () => {
+        let calls = 0;
+        await openPreview({
+            "POST /api/preview": accepted(job("preview", "running", 0.1)),
+            // 1 回だけ接続に失敗し、その後は作り終える
+            "GET /api/jobs/preview-1": () => (++calls === 1 ? new TypeError("Failed to fetch") : ok(job("preview", "done", 1))),
+        });
+        expect(await screen.findByLabelText("プレビュー動画")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Mac につながりません" })).not.toBeInTheDocument();
+    });
+
+    it("動画を読み込めなければ、理由と読み込み直すボタンを出す", async () => {
+        const { user } = await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
+        const video = await screen.findByLabelText("プレビュー動画");
+        fireEvent.error(video);
+        expect(await screen.findByRole("alert")).toHaveTextContent("動画を読み込めませんでした");
+        await user.click(screen.getByRole("button", { name: "もう一度読み込む" }));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("プレビュー動画")).toBeInTheDocument();
     });
 
     it("生成の途中で共有の期限が切れたら、その案内に切り替える", async () => {
@@ -151,9 +178,9 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(video).toHaveAttribute("height", "634");
     });
 
-    it("手順の表示は 3 番目", async () => {
+    it("手順の表示は 4 番目", async () => {
         await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
         const steps = screen.getByRole("list", { name: "手順" });
-        expect(within(steps).getByText("3. 確認")).toHaveAttribute("aria-current", "step");
+        expect(within(steps).getByText("4. 確認")).toHaveAttribute("aria-current", "step");
     });
 });

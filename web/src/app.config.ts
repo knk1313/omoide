@@ -4,6 +4,7 @@ import { Film, type LucideIcon } from "lucide-react";
 
 /** 共有 URL を開いてログインした後に、順に進む画面。 */
 export const steps = [
+    { label: "動画", path: "/videos" },
     { label: "選ぶ", path: "/" },
     { label: "速度", path: "/settings" },
     { label: "確認", path: "/preview" },

@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Film } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { PanelClip, Project } from "@/api/types";
 import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
 import Button from "@/components/Button";
-import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/Toast";
-import { formatDate, formatSeconds } from "@/lib/format";
+import { formatDay, formatSeconds } from "@/lib/format";
 import { useSession } from "@/session/Session";
 import ClipPlayer from "./clips/ClipPlayer";
 import ClipTile from "./clips/ClipTile";
@@ -22,6 +20,8 @@ export default function ClipsPage() {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [playing, setPlaying] = useState<PanelClip | null>(null);
     const [bulkBusy, setBulkBusy] = useState(false);
+    // 表示するユーザー（上から 1・2・3）。null なら全員
+    const [panelFilter, setPanelFilter] = useState<number | null>(null);
 
     // 「もう一度読み込む」で増やし、読み込みをやり直す
     const [attempt, setAttempt] = useState(0);
@@ -65,13 +65,22 @@ export default function ClipsPage() {
         [setSelected, handleError, toast],
     );
 
-    async function selectAll(selected: boolean) {
+    // 絞り込んでいるときは、表示しているユーザーだけを対象にする。only なら、それ以外のユーザーを除外する
+    async function selectAll(selected: boolean, only = false) {
         if (!data) return;
         const before = data.clips;
+        const panel = panelFilter;
         setBulkBusy(true);
-        setSelected("all", selected);
+        setData((prev) =>
+            prev && {
+                ...prev,
+                clips: prev.clips.map((c) =>
+                    panel === null || c.panel === panel ? { ...c, selected } : only ? { ...c, selected: false } : c,
+                ),
+            },
+        );
         try {
-            await api.selectAll(selected);
+            await api.selectAll(selected, panel === null ? {} : { panel, only });
         } catch (error) {
             setData((prev) => prev && { ...prev, clips: before });
             if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
@@ -80,7 +89,12 @@ export default function ClipsPage() {
         }
     }
 
-    const sections = useMemo(() => groupByVideo(data), [data]);
+    const users = useMemo(() => listUsers(data), [data]);
+    const sections = useMemo(
+        () => groupByVideo(data && { ...data, clips: data.clips.filter((c) => panelFilter === null || c.panel === panelFilter) }),
+        [data, panelFilter],
+    );
+    const filterLabel = users.find((u) => u.panel === panelFilter)?.label;
 
     if (loadError) {
         return (
@@ -96,13 +110,8 @@ export default function ClipsPage() {
         return <p className="pt-8 text-center text-sm text-muted">読み込んでいます…</p>;
     }
     if (data.clips.length === 0) {
-        return (
-            <EmptyState
-                icon={<Film className="h-10 w-10" />}
-                title="選べるクリップがありません"
-                message="Mac の input/ に Setlog の動画を置いてから、serve を起動し直してください。"
-            />
-        );
+        // 動画がまだ無ければ、取り込む画面から始める
+        return <Navigate to="/videos" replace />;
     }
 
     // 採用数と推定時間は、選択と速度から毎回計算する（状態として持たない）
@@ -123,6 +132,36 @@ export default function ClipsPage() {
                 </div>
             </div>
             <p className="pb-3 text-sm text-muted">タップで採用・除外を切り替えます。長押しか ▶ で再生します。</p>
+
+            {users.length > 1 && (
+                <div className="flex flex-col gap-2 pb-4">
+                    <div role="radiogroup" aria-label="表示するユーザー" className="flex flex-wrap gap-2">
+                        {[{ panel: null, label: "全員", count: data.clips.length }, ...users].map((user) => {
+                            const checked = user.panel === panelFilter;
+                            return (
+                                <button
+                                    key={user.label}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={checked}
+                                    onClick={() => setPanelFilter(user.panel)}
+                                    className={`flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+                                        checked ? "border-brand bg-nav-active text-nav-ink" : "border-control-border bg-surface text-ink hover:bg-surface-2"
+                                    }`}
+                                >
+                                    {user.label}
+                                    <span className={`tabular-nums ${checked ? "text-nav-ink" : "text-muted"}`}>{user.count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {filterLabel && (
+                        <Button variant="tonal" size="sm" className="h-11 self-start px-4" disabled={bulkBusy} onClick={() => void selectAll(true, true)}>
+                            {filterLabel}だけ使う
+                        </Button>
+                    )}
+                </div>
+            )}
 
             <div className="flex flex-col gap-6 pb-4">
                 {sections.map((section) => (
@@ -162,21 +201,35 @@ export default function ClipsPage() {
     );
 }
 
+type User = { panel: number; label: string; count: number };
+
+// 中身のあるパネルを持つユーザー（上から 1・2・3）と、その数
+function listUsers(data: Loaded | null): User[] {
+    if (!data) return [];
+    const users = new Map<number, User>();
+    for (const clip of data.clips) {
+        const user = users.get(clip.panel) ?? { panel: clip.panel, label: clip.label, count: 0 };
+        user.count += 1;
+        users.set(clip.panel, user);
+    }
+    return [...users.values()].sort((a, b) => a.panel - b.panel);
+}
+
 type Section = { video: string; title: string; subtitle: string; clips: PanelClip[] };
 
-// 動画ごとにまとめ、撮影日が分かれば見出しにする
+// 動画ごとにまとめ、利用者が入力した撮影日を見出しにする（並び順はサーバーが撮影日の順にしている）
 function groupByVideo(data: Loaded | null): Section[] {
     if (!data) return [];
-    const createdAt = new Map(data.project.videos.map((v) => [v.name, v.created_at]));
+    const dates = new Map(data.project.videos.map((v) => [v.name, v.date]));
     const sections = new Map<string, Section>();
     for (const clip of data.clips) {
         let section = sections.get(clip.video);
         if (!section) {
-            const created = createdAt.get(clip.video);
+            const date = dates.get(clip.video);
             section = {
                 video: clip.video,
-                title: created ? formatDate(created) : clip.video,
-                subtitle: created ? clip.video : "",
+                title: date ? formatDay(date) : "撮影日が未入力",
+                subtitle: clip.video,
                 clips: [],
             };
             sections.set(clip.video, section);
