@@ -32,5 +32,7 @@ def export_panel_clip(
         "-ss", f"{clip.start:.3f}", "-t", f"{clip.duration:.3f}", "-i", str(info.path),
         "-vf", ",".join([panel.crop_filter, *filters]), "-an",
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        # スマホで全体を読み込む前に再生を始められるよう、目次 (moov) を先頭に置く
+        "-movflags", "+faststart",
         str(out_path),
     )
