@@ -74,7 +74,7 @@ describe("出力設定画面", () => {
 
     it("クリップ選択に戻れる", async () => {
         const { user } = await openSettings();
-        await user.click(screen.getByRole("button", { name: "クリップ選択に戻る" }));
+        await user.click(screen.getByRole("button", { name: "クリップ選択" }));
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
     });
 

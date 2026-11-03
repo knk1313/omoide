@@ -4,6 +4,8 @@ export type Speed = 0.5 | 1 | 1.5 | 2;
 
 export type Project = {
     speed: Speed;
+    /** 結合した動画の大きさ（つなぐ順で最初のパネル）。採用が 0 件なら null。 */
+    frame: { width: number; height: number } | null;
     total_count: number;
     selected_count: number;
     /** 採用したパネルを選んだ速度でつないだときの長さ（秒）。 */
@@ -20,6 +22,9 @@ export type PanelClip = {
     panel: number;
     /** 「上」「中」「下」。 */
     label: string;
+    /** パネルの大きさ。サムネイルと再生枠の縦横比に使う。 */
+    width: number;
+    height: number;
     start: number;
     duration: number;
     selected: boolean;

@@ -11,6 +11,9 @@ async function openClips(routes: Parameters<typeof fakeServer>[0] = {}) {
 }
 
 // タイルの名前は「クリップ 1・中（採用）」。再生ボタン（「…を再生」）とは区別する
+// 下の帯の要約（「2 件を選択・約 4秒（1x）」）
+const summary = () => screen.getByText((_, el) => el?.tagName === "P" && /件を選択/.test(el.textContent ?? ""));
+
 const tile = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}（`) });
 
 describe("クリップ選択画面", () => {
@@ -35,7 +38,7 @@ describe("クリップ選択画面", () => {
 
     it("採用数と推定時間を表示する", async () => {
         await openClips();
-        expect(screen.getByText("件を選択").parentElement).toHaveTextContent("2 件を選択約 4秒（1x）");
+        expect(summary()).toHaveTextContent("2 件を選択・約 4秒（1x）");
     });
 
     it("タップで除外し、サーバーに保存して数を更新する", async () => {
@@ -43,7 +46,7 @@ describe("クリップ選択画面", () => {
         await user.click(tile("クリップ 1・中"));
 
         expect(tile("クリップ 1・中")).toHaveAttribute("aria-pressed", "false");
-        expect(screen.getByText("件を選択").parentElement).toHaveTextContent("1 件を選択約 2秒");
+        expect(summary()).toHaveTextContent("1 件を選択・約 2秒");
         expect(server.calls.at(-1)).toEqual({ method: "PATCH", path: "/api/clips/sep/001-2", body: { selected: false } });
     });
 
@@ -65,7 +68,10 @@ describe("クリップ選択画面", () => {
         expect(screen.getByText("1 件以上選んでください")).toBeInTheDocument();
         expect(server.calls.at(-1)).toEqual({ method: "POST", path: "/api/clips/select-all", body: { selected: false } });
 
-        await user.click(screen.getByRole("button", { name: "全選択" }));
+        // 保存が終わるまでは全選択・全解除を押せない
+        const selectAll = screen.getByRole("button", { name: "全選択" });
+        await waitFor(() => expect(selectAll).toBeEnabled());
+        await user.click(selectAll);
         expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(3);
         expect(screen.getByRole("button", { name: "次へ" })).toBeEnabled();
     });

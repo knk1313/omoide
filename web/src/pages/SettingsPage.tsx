@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { Project, Speed } from "@/api/types";
+import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { useToast } from "@/components/Toast";
@@ -133,14 +134,11 @@ export default function SettingsPage() {
                 </p>
             )}
 
-            <div className="mt-auto flex flex-col gap-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <Button className="h-12 w-full text-base" disabled={starting || nothingSelected} onClick={() => void startPreview()}>
+            <BottomBar back={{ label: "クリップ選択", onClick: () => navigate("/") }}>
+                <Button className={PRIMARY_ACTION} disabled={starting || nothingSelected} onClick={() => void startPreview()}>
                     {starting ? "生成を始めています…" : "プレビューを生成"}
                 </Button>
-                <Button variant="secondary" className="h-12 w-full" onClick={() => navigate("/")}>
-                    クリップ選択に戻る
-                </Button>
-            </div>
+            </BottomBar>
         </div>
     );
 }

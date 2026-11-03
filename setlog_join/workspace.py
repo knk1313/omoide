@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .cache import CACHE_VERSION, file_stamp, video_key
 from .export import export_panel_clip
-from .join import SPEEDS, PanelRef, Segment, resolve_segments
+from .join import SPEEDS, PanelRef, Segment, SelectionError, resolve_segments
 from .panels import Panel
 from .project import PROJECT_PATH, Project, load_project, save_project
 from .scan import ScannedClip, VideoScan
@@ -93,8 +93,15 @@ class Workspace:
     def summary(self) -> dict:
         selected = [e for e in self.entries.values() if self.is_selected(e)]
         seconds = sum(e.clip.duration for e in selected)
+        try:
+            # 結合した動画の大きさは、つなぐ順で最初のパネルの大きさで決まる
+            first = self.selected_segments()[0].panel
+            frame = {"width": first.width, "height": first.height}
+        except SelectionError:
+            frame = None
         return {
             "speed": self.project.speed,
+            "frame": frame,
             "total_count": len(self.entries),
             "selected_count": len(selected),
             "estimated_seconds": round(seconds / self.project.speed, 2),

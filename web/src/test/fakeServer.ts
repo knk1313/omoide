@@ -16,8 +16,11 @@ export function fakeServer(routes: Record<string, Handler>) {
         calls.push({ method, path, body });
         const handler = routes[`${method} ${path}`];
         if (handler === undefined) {
+            await new Promise((resolve) => setTimeout(resolve, 20));
             return new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 });
         }
+        // 実際の通信と同じく少し待ってから応答し、応答を待たずに画面を確かめるテストの誤りを見つけやすくする
+        await new Promise((resolve) => setTimeout(resolve, 20));
         const reply = typeof handler === "function" ? handler(body) : handler;
         if (reply instanceof Error) throw reply;
         return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status });
@@ -29,7 +32,8 @@ export function fakeServer(routes: Record<string, Handler>) {
 function panel(video: string, clip: number, panel: number, selected = true): PanelClip {
     const id = `${video}/${String(clip).padStart(3, "0")}-${panel}`;
     return {
-        id, video, clip, panel, label: ["上", "中", "下"][panel - 1], start: (clip - 1) * 2, duration: 2, selected,
+        id, video, clip, panel, label: ["上", "中", "下"][panel - 1], width: 1160, height: 634,
+        start: (clip - 1) * 2, duration: 2, selected,
         thumbnail_url: `/media/thumbnails/${id}`, video_url: `/media/clips/${id}`,
     };
 }
@@ -39,6 +43,7 @@ export const sampleClips: PanelClip[] = [panel("sep", 1, 2), panel("sep", 2, 3, 
 
 export const sampleProject: Project = {
     speed: 1,
+    frame: { width: 1160, height: 634 },
     total_count: 3,
     selected_count: 2,
     estimated_seconds: 4,

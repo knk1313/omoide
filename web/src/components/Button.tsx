@@ -27,6 +27,11 @@ const VARIANTS: Record<Variant, string> = {
 // React 19 では ref は通常の prop として関数コンポーネントに渡せる（forwardRef 不要）。
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; ref?: Ref<HTMLButtonElement> };
 
+/** ボタンと同じ見た目のクラス。リンク（<a>）をボタンに見せるときに使う。 */
+export function buttonClass(variant: Variant = "primary", size: Size = "md"): string {
+    return `${BASE} ${SIZES[size]} ${VARIANTS[variant]}`;
+}
+
 export default function Button({ variant = "primary", size = "md", className = "", type = "button", ...props }: Props) {
-    return <button type={type} className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${className}`} {...props} />;
+    return <button type={type} className={`${buttonClass(variant, size)} ${className}`} {...props} />;
 }

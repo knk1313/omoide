@@ -12,9 +12,10 @@ from .cache import file_stamp, video_key
 from .scan import VideoScan
 
 THUMBNAIL_DIR = Path(".setlog-join/thumbnails")
-THUMBNAIL_WIDTH = 400
+# 2 列のタイル (幅約 175pt) を 3 倍の画素密度で表示しても粗く見えない大きさ
+THUMBNAIL_WIDTH = 640
 # 切り出し方や画質を変えたら上げる。古いサムネイルは作り直す
-THUMBNAIL_VERSION = 1
+THUMBNAIL_VERSION = 2
 _STAMP_FILE = "stamp.json"
 
 

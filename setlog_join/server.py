@@ -226,6 +226,9 @@ def _clip_json(workspace: Workspace, entry: PanelEntry) -> dict:
         "clip": entry.ref.clip,
         "panel": entry.ref.panel,
         "label": entry.panel.label,
+        # 画面で再生枠とサムネイルをパネルと同じ縦横比にし、上下や左右に黒い帯を出さないため
+        "width": entry.panel.width,
+        "height": entry.panel.height,
         "start": round(clip.start, 3),
         "duration": round(clip.duration, 3),
         "selected": workspace.is_selected(entry),

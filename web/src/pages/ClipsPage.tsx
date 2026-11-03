@@ -3,6 +3,7 @@ import { Film } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
 import type { PanelClip, Project } from "@/api/types";
+import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
 import Button from "@/components/Button";
 import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/Toast";
@@ -139,20 +140,22 @@ export default function ClipsPage() {
                 ))}
             </div>
 
-            {/* 下に固定する操作。iPhone のホームバーに重ならないよう、安全領域の分だけ余白を取る */}
-            <div className="sticky bottom-0 -mx-4 mt-auto border-t border-hairline bg-canvas/95 px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur">
-                <div className="flex items-center gap-3">
-                    <p className="flex-1 text-sm text-ink" aria-live="polite">
-                        <span className="font-semibold tabular-nums">{selected.length}</span> 件を選択
-                        <span className="block text-xs text-muted">
-                            {selected.length > 0 ? `約 ${formatSeconds(seconds)}（${data.project.speed}x）` : "1 件以上選んでください"}
-                        </span>
-                    </p>
-                    <Button className="h-12 px-8 text-base" disabled={selected.length === 0} onClick={() => navigate("/settings")}>
-                        次へ
-                    </Button>
-                </div>
-            </div>
+            <BottomBar
+                summary={
+                    selected.length > 0 ? (
+                        <>
+                            <span className="font-semibold tabular-nums text-ink">{selected.length}</span> 件を選択・約{" "}
+                            {formatSeconds(seconds)}（{data.project.speed}x）
+                        </>
+                    ) : (
+                        "1 件以上選んでください"
+                    )
+                }
+            >
+                <Button className={PRIMARY_ACTION} disabled={selected.length === 0} onClick={() => navigate("/settings")}>
+                    次へ
+                </Button>
+            </BottomBar>
 
             {playing && <ClipPlayer clip={playing} onClose={() => setPlaying(null)} />}
         </div>

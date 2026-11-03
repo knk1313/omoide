@@ -30,7 +30,8 @@ function ClipTile({ clip, onToggle, onPlay }: Props) {
                     clip.selected ? "ring-brand" : "ring-transparent"
                 }`}
             >
-                <span className="relative block aspect-video bg-surface-2">
+                {/* パネルと同じ縦横比にし、画像の上下や左右を切らない */}
+                <span className="relative block bg-surface-2" style={{ aspectRatio: `${clip.width} / ${clip.height}` }}>
                     <img
                         src={clip.thumbnail_url}
                         alt=""
