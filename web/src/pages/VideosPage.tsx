@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { CalendarDays, Film, Upload } from "lucide-react";
+import { Film, Upload } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api, ApiError, uploadVideo } from "@/api/client";
 import type { Job, Project, Video } from "@/api/types";
-import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
-import Button from "@/components/Button";
-import Card from "@/components/Card";
-import { useToast } from "@/components/Toast";
+import { LoadFailure, Loading } from "@/components/app/PageStatus";
+import { Button } from "@/components/ui/Button";
+import { Card, CardBody } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { useToast } from "@/components/ui/Toast";
+import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatDay } from "@/lib/format";
 import { useSession } from "@/session/Session";
 import { isTransient, polling } from "./preview/useJob";
@@ -97,43 +104,40 @@ export default function VideosPage() {
         try {
             const saved = await api.setVideoDate(video.name, date || null);
             setProject(await api.project());
-            toast(`${saved.date ? formatDay(saved.date) : "撮影日"}にしました`);
+            toast({ title: `${saved.date ? formatDay(saved.date) : "撮影日"}にしました`, type: "success" });
             return true;
         } catch (error) {
-            if (!handleError(error)) toast(error instanceof ApiError ? error.message : "保存できませんでした", "error");
+            if (!handleError(error)) toast({ title: error instanceof ApiError ? error.message : "保存できませんでした", type: "error" });
             return false;
         }
     }
 
-    if (loadError) {
+    const header = <PageHeader title="動画を取り込む" description="Setlog から書き出した動画を選び、撮影した日を入力してください。" />;
+
+    if (loadError || !project) {
         return (
-            <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 pb-[14vh] text-center">
-                <p className="text-sm text-muted">{loadError}</p>
-                <Button
-                    variant="secondary"
-                    className="h-12 px-8"
-                    onClick={() => {
-                        setLoadError(null);
-                        setAttempt((n) => n + 1);
-                    }}
-                >
-                    もう一度読み込む
-                </Button>
+            <div className="flex flex-1 flex-col gap-6">
+                {header}
+                {loadError ? (
+                    <LoadFailure
+                        message={loadError}
+                        onRetry={() => {
+                            setLoadError(null);
+                            setAttempt((n) => n + 1);
+                        }}
+                    />
+                ) : (
+                    <Loading />
+                )}
             </div>
         );
-    }
-    if (!project) {
-        return <p className="pt-8 text-center text-sm text-muted">読み込んでいます…</p>;
     }
 
     const busy = upload?.stage === "sending" || upload?.stage === "analyzing";
 
     return (
-        <div className="flex flex-1 flex-col gap-5 pt-1">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-xl font-semibold text-ink">動画を取り込む</h1>
-                <p className="text-sm leading-relaxed text-muted">Setlog から書き出した動画を選び、撮影した日を入力してください。</p>
-            </div>
+        <div className="flex flex-1 flex-col gap-6">
+            {header}
 
             <input
                 ref={fileInput}
@@ -154,25 +158,21 @@ export default function VideosPage() {
                     onDismiss={() => setUpload(null)}
                 />
             ) : (
-                <button
-                    type="button"
-                    onClick={() => fileInput.current?.click()}
-                    className="flex h-28 flex-col items-center justify-center gap-2 rounded-surface border-2 border-dashed border-control-border bg-surface text-ink transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                >
-                    <Upload className="h-6 w-6 text-brand" aria-hidden />
-                    <span className="text-sm font-medium">動画を選んでアップロード</span>
-                </button>
+                <Button variant="outline" size="lg" block leadIcon={Upload} onClick={() => fileInput.current?.click()}>
+                    動画を選んでアップロード
+                </Button>
             )}
 
-            <section aria-label="取り込んだ動画" className="flex flex-col gap-3">
-                <h2 className="text-base font-semibold text-ink">取り込んだ動画</h2>
+            <section aria-labelledby="videos-title" className="flex flex-col gap-3">
+                <h2 id="videos-title" className="m-0 text-std-20B-150 text-text-strong">
+                    取り込んだ動画
+                </h2>
                 {project.videos.length === 0 ? (
-                    <p className="flex items-center gap-2 text-sm text-muted">
-                        <Film className="h-4 w-4 shrink-0" aria-hidden />
-                        まだありません
-                    </p>
+                    <Card>
+                        <EmptyState icon={Film} as="h3" title="まだありません" description="上のボタンから、Setlog の動画を選んでください。" className="py-8" />
+                    </Card>
                 ) : (
-                    <ul className="flex flex-col gap-2">
+                    <ul className="m-0 flex list-none flex-col gap-2 p-0">
                         {project.videos.map((video) => (
                             <VideoRow key={video.name} video={video} disabled={busy} onSave={(date) => void saveDate(video, date)} />
                         ))}
@@ -184,15 +184,15 @@ export default function VideosPage() {
                 summary={
                     project.total_count > 0 ? (
                         <>
-                            動画 <span className="font-semibold tabular-nums text-ink">{project.videos.length}</span> 本・パネル{" "}
-                            <span className="font-semibold tabular-nums text-ink">{project.total_count}</span> 件
+                            動画 <span className="nums font-bold text-text-strong">{project.videos.length}</span> 本・パネル{" "}
+                            <span className="nums font-bold text-text-strong">{project.total_count}</span> 件
                         </>
                     ) : (
                         "動画を 1 本以上取り込んでください"
                     )
                 }
             >
-                <Button className={PRIMARY_ACTION} disabled={project.total_count === 0 || busy} onClick={() => navigate("/")}>
+                <Button {...PRIMARY_ACTION} disabled={project.total_count === 0 || busy} onClick={() => navigate("/")}>
                     次へ
                 </Button>
             </BottomBar>
@@ -216,44 +216,31 @@ function UploadStatus({
     }
     if (upload.stage === "failed") {
         return (
-            <Card role="alert" className="flex flex-col gap-3 p-4">
-                <p className="text-sm font-medium text-ink">{upload.fileName}</p>
-                <p className="text-sm text-danger">{upload.message}</p>
-                <div className="grid grid-cols-2 gap-2">
-                    <Button variant="secondary" className="h-11" onClick={onDismiss}>
-                        閉じる
-                    </Button>
-                    <Button className="h-11" onClick={onRetry}>
+            <NotificationBanner
+                type="error"
+                live="assertive"
+                title={upload.message}
+                description={upload.fileName}
+                onClose={onDismiss}
+                actions={
+                    <Button block onClick={onRetry}>
                         別の動画を選ぶ
                     </Button>
-                </div>
-            </Card>
+                }
+            />
         );
     }
     const sending = upload.stage === "sending";
-    const percent = Math.round((sending ? upload.sent : 1) * 100);
-    const label = sending ? "アップロードしています" : "動画を読み取っています";
     return (
-        <Card className="flex flex-col gap-2 p-4">
-            <p className="truncate text-sm font-medium text-ink">{upload.fileName}</p>
-            <div className="flex items-center justify-between text-sm">
-                <span className="text-ink">{label}</span>
-                {sending && <span className="tabular-nums text-muted">{percent}%</span>}
-            </div>
-            <div
-                role="progressbar"
-                aria-label={label}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={sending ? percent : undefined}
-                className="h-2 overflow-hidden rounded-full bg-surface-2"
-            >
-                <div
-                    className={`h-full rounded-full bg-brand transition-[width] duration-300 ${sending ? "" : "animate-pulse"}`}
-                    style={{ width: `${percent}%` }}
+        <Card padding="sm">
+            <CardBody className="flex flex-col gap-2">
+                <p className="m-0 truncate font-bold text-text-strong">{upload.fileName}</p>
+                <ProgressBar
+                    label={sending ? "アップロードしています" : "動画を読み取っています"}
+                    value={sending ? upload.sent : null}
+                    description={sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}
                 />
-            </div>
-            <p className="text-xs text-muted">{sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}</p>
+            </CardBody>
         </Card>
     );
 }
@@ -263,32 +250,31 @@ function DateCard({ video, onSave }: { video: Video; onSave: (video: Video, date
     const [date, setDate] = useState(video.date ?? video.metadata_date ?? "");
     const [saving, setSaving] = useState(false);
     return (
-        <Card className="flex flex-col gap-3 p-4">
-            <p className="text-sm text-ink">
-                <span className="font-medium">{video.name}</span> を取り込みました（パネル {video.panel_count} 件）
-            </p>
-            <label htmlFor="new-video-date" className="text-sm font-medium text-ink">
-                この動画を撮影した日
-            </label>
-            <input
-                id="new-video-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-12 w-full rounded-control border border-control-border bg-surface px-4 text-base text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-            />
-            {video.metadata_date && <p className="text-xs text-muted">動画の情報から {formatDay(video.metadata_date)} を入れています。違っていたら直してください。</p>}
-            <Button
-                className="h-12 w-full text-base"
-                disabled={!date || saving}
-                onClick={async () => {
-                    setSaving(true);
-                    await onSave(video, date);
-                    setSaving(false);
-                }}
-            >
-                この日付にする
-            </Button>
+        <Card padding="sm">
+            <CardBody className="flex flex-col gap-4">
+                <p className="m-0">
+                    <span className="font-bold text-text-strong">{video.name}</span> を取り込みました（パネル <span className="nums">{video.panel_count}</span> 件）
+                </p>
+                <FormField
+                    label="この動画を撮影した日"
+                    supportText={video.metadata_date ? `動画の情報から ${formatDay(video.metadata_date)} を入れています。違っていたら直してください。` : undefined}
+                >
+                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </FormField>
+                <Button
+                    size="lg"
+                    block
+                    loading={saving}
+                    disabled={!date}
+                    onClick={async () => {
+                        setSaving(true);
+                        await onSave(video, date);
+                        setSaving(false);
+                    }}
+                >
+                    この日付にする
+                </Button>
+            </CardBody>
         </Card>
     );
 }
@@ -296,32 +282,31 @@ function DateCard({ video, onSave }: { video: Video; onSave: (video: Video, date
 function VideoRow({ video, disabled, onSave }: { video: Video; disabled: boolean; onSave: (date: string) => void }) {
     const inputId = `video-date-${video.name}`;
     return (
-        <li>
-            <Card className="flex items-center gap-3 p-3">
-                <CalendarDays className="h-5 w-5 shrink-0 text-muted" aria-hidden />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate text-sm font-medium text-ink">{video.name}</span>
-                    <span className="text-xs text-muted">
-                        パネル {video.panel_count} 件{video.date ? "" : "・撮影日が未入力"}
+        <Card as="li" padding="sm">
+            <CardBody className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <div className="flex min-w-0 flex-col">
+                    <span className="truncate font-bold text-text-strong">{video.name}</span>
+                    <span className="text-text-muted">
+                        パネル <span className="nums">{video.panel_count}</span> 件
+                        {video.date ? "" : <span className="font-bold text-warning">・撮影日が未入力</span>}
                     </span>
                 </div>
                 <label htmlFor={inputId} className="sr-only">
                     {video.name}の撮影日
                 </label>
-                <input
+                <Input
                     id={inputId}
                     type="date"
+                    size="sm"
+                    block={false}
                     // 入力していなければ、メタデータの日付を初期値として見せる
                     defaultValue={video.date ?? video.metadata_date ?? ""}
                     disabled={disabled}
                     onChange={(e) => {
                         if (e.target.value) onSave(e.target.value);
                     }}
-                    className={`h-11 rounded-control border bg-surface px-3 text-base text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 ${
-                        video.date ? "border-control-border" : "border-status-warning-ink"
-                    }`}
                 />
-            </Card>
-        </li>
+            </CardBody>
+        </Card>
     );
 }

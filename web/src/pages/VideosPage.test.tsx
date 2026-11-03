@@ -56,6 +56,8 @@ async function openVideos(routes: Parameters<typeof fakeServer>[0] = {}) {
     const server = fakeServer({ ...loggedIn, ...routes });
     const app = renderApp("/videos");
     await screen.findByRole("heading", { name: "動画を取り込む" });
+    // 見出しは読み込み中から出るので、一覧が出るまで待つ
+    await screen.findByRole("button", { name: "次へ" });
     return { server, ...app };
 }
 
