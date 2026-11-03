@@ -4,7 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from setlog_join.join import PREVIEW_QUALITY, PanelRef, Segment, SelectionError, join_segments, resolve_segments
+from setlog_join.ffmpeg import gray_frames
+from setlog_join.join import PREVIEW_QUALITY, PanelRef, Quality, Segment, SelectionError, join_segments, resolve_segments
 from setlog_join.panels import Panel
 from setlog_join.probe import VideoInfo, probe
 from setlog_join.scan import ScannedClip, VideoScan
@@ -99,12 +100,25 @@ class JoinSegmentsTest(unittest.TestCase):
             join_segments(segments, 1.0, out, quality=PREVIEW_QUALITY, progress=seen.append)
             result = probe(out)
             data = out.read_bytes()
-        self.assertEqual((result.width, result.height), (480, 270))
+        # 幅 960 が上限なので、640x360 のパネルはそのままの大きさ
+        self.assertEqual((result.width, result.height), (640, 360))
         self.assertEqual(seen, sorted(seen))
         self.assertEqual(seen[-1], 1.0)
         self.assertEqual(len(seen), 3)
         # つないだ後の動画も、目次が先頭にある
         self.assertLess(data.find(b"moov"), data.find(b"mdat"))
+
+    def test_shrinking_leaves_no_black_edges(self):
+        # 縦横比を保つ縮め方では丸めで 1px 足りず、端に黒い線が入っていた
+        with tempfile.TemporaryDirectory() as tmp:
+            src = self._stacked(Path(tmp) / "wide.mp4", "1160x634", ["white", "white", "white"])
+            panel = Panel(position=0, x=0, y=0, width=1160, height=634)
+            out = Path(tmp) / "small.mp4"
+            join_segments([Segment(src, Clip(1, 0.0, 1.0), panel)], 1.0, out,
+                          quality=Quality(max_width=480, encoder_args=()))
+            frame = gray_frames("-i", str(out), "-frames:v", "1", width=480, height=262)[0]
+        self.assertGreater(frame[:, -1].min(), 200)
+        self.assertGreater(frame[-1, :].min(), 200)
 
     def test_rejects_unknown_speed(self):
         with self.assertRaises(ValueError):

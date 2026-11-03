@@ -53,8 +53,9 @@ class Quality:
 
 
 FULL_QUALITY = Quality(max_width=None, encoder_args=())
-# 選択を確かめるためのプレビュー。画質を落として速く作る
-PREVIEW_QUALITY = Quality(max_width=480, encoder_args=("-preset", "veryfast", "-crf", "30"))
+# 選択を確かめるためのプレビュー。スマホの画面幅いっぱいでも粗く見えない大きさにし、速さを優先した設定で作る。
+# 幅 960 でも幅 480 と生成時間はほとんど変わらない (23 パネルで 2.3 秒 → 2.7 秒)
+PREVIEW_QUALITY = Quality(max_width=960, encoder_args=("-preset", "veryfast", "-crf", "24"))
 
 
 @dataclass(frozen=True)
@@ -101,21 +102,31 @@ def join_segments(
         height = round(height * quality.max_width / width / 2) * 2
         width = quality.max_width
     fps = segments[0].info.fps
-    filters = [
-        f"scale={width}:{height}:force_original_aspect_ratio=decrease",
-        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2",
+    first = segments[0].panel
+    tail = [
         "setsar=1",
         f"setpts=PTS/{speed:g}",
         # 速度を変えてもフレームレートをそろえ、つなぎ目で再生がずれないようにする
         f"fps={fps:g}",
     ]
 
+    def filters_for(panel) -> list[str]:
+        if (panel.width, panel.height) == (first.width, first.height):
+            # 最初のパネルと同じ大きさなら、余白を足さずにぴったり縮める。
+            # 縦横比を保つ縮め方では丸めで 1px 足りず、端に黒い線が入るため
+            return [f"scale={width}:{height}", *tail]
+        return [
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2",
+            *tail,
+        ]
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         parts = []
         for i, segment in enumerate(segments):
             part = Path(tmp) / f"{i:05d}.mp4"
-            export_panel_clip(segment.info, segment.clip, segment.panel, part, filters, quality.encoder_args)
+            export_panel_clip(segment.info, segment.clip, segment.panel, part, filters_for(segment.panel), quality.encoder_args)
             parts.append(part)
             if progress is not None:
                 # 最後のつなぐ処理の分を残しておく

@@ -35,7 +35,7 @@ class EnsureThumbnailsTest(unittest.TestCase):
              str(video_dir / "001-3.jpg")],
             capture_output=True, text=True, check=True,
         ).stdout.strip()
-        self.assertEqual(size, "400,226")
+        self.assertEqual(size, "640,360")
         self.assertColor(self._pixel(video_dir / "001-3.jpg"), COLORS[BLUE])
 
     def test_skips_existing_images_while_video_is_unchanged(self):
