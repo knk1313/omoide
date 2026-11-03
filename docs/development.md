@@ -43,9 +43,10 @@ issueで方針を決めてから実装し、一つの変更を一つのコミッ
 
 ## テスト
 
-Pythonのテストは標準ライブラリの`unittest`で書く。
+Pythonのテストは標準ライブラリの`unittest`で書く。テストだけで使う依存（`httpx`など）は`requirements-dev.txt`に書く。
 
 ```bash
+.venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m unittest discover -s tests
 ```
 
@@ -62,7 +63,7 @@ GitHub Actionsが、pushとPRのたびに次の二つのワークフローを実
 
 | ワークフロー | 実行する内容 | 動く条件 |
 | --- | --- | --- |
-| `.github/workflows/python.yml` | FFmpegを入れ、`.python-version`のPythonで`tests/`の`unittest`を実行する | `setlog_join/`、`tests/`、`main.py`、`requirements.txt`、`.python-version`の変更 |
+| `.github/workflows/python.yml` | FFmpegを入れ、`.python-version`のPythonで`tests/`の`unittest`を実行する | `setlog_join/`、`tests/`、`main.py`、`requirements.txt`、`requirements-dev.txt`、`.python-version`の変更 |
 | `.github/workflows/web.yml` | `web/`で`npm run check`と`npm run build`を実行する | `web/`の変更 |
 
 - どちらも、ワークフロー自身のファイルを変えたときにも動く

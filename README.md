@@ -19,6 +19,9 @@ python3 -m venv .venv
 # パネルをつないで 1 本の動画にする (output/omoide-<日時>.mp4)
 .venv/bin/python main.py join --speed 1.5                     # 中身のあるパネルをすべて使う
 .venv/bin/python main.py join --select collection_export/001-1,collection_export/002-3
+
+# 同じ Wi-Fi のスマホから操作するサーバーを起動する (先に画面をビルドしておく: cd web && npm run build)
+.venv/bin/python main.py serve
 ```
 
 - 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
