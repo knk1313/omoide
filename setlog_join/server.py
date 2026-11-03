@@ -176,12 +176,12 @@ def create_app(
         return FileResponse(job.path, media_type="video/mp4")
 
     @app.get("/download/output")
-    def download() -> FileResponse:
+    def download(name: str | None = None) -> FileResponse:
         job = jobs.latest_done("export")
         if job is None:
             raise HTTPException(status_code=404, detail="完成版がまだありません")
-        # スマホで再生画面ではなく保存に進むよう、添付ファイルとして返す
-        return FileResponse(job.path, media_type="video/mp4", filename=job.path.name)
+        # スマホで再生画面ではなく保存に進むよう、添付ファイルとして返す。名前は利用者が決めたものにする
+        return FileResponse(job.path, media_type="video/mp4", filename=download_name(name, job.path.stem))
 
     @app.get("/media/thumbnails/{panel_id:path}")
     def thumbnail(panel_id: str) -> FileResponse:
@@ -208,6 +208,17 @@ def create_app(
             return _NOT_BUILT_HTML
 
     return app
+
+
+_MAX_NAME_LENGTH = 80
+
+
+def download_name(name: str | None, fallback: str) -> str:
+    """保存するファイル名。パスの区切りや制御文字を除き、長さを抑えて .mp4 を付ける。"""
+    cleaned = "".join(c for c in (name or "") if c.isprintable() and c not in '/\\:*?"<>|').strip().strip(".")
+    if cleaned.lower().endswith(".mp4"):
+        cleaned = cleaned[:-4].rstrip()
+    return f"{(cleaned or fallback)[:_MAX_NAME_LENGTH]}.mp4"
 
 
 def _start(jobs: JobManager, kind: str) -> dict:

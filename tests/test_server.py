@@ -284,6 +284,13 @@ class JobsApiTest(ServerTestCase):
         self.assertTrue(response.headers["content-disposition"].startswith("attachment;"))
         self.assertIn("omoide-", response.headers["content-disposition"])
 
+    def test_download_uses_the_chosen_name(self):
+        job = self.wait(self.client.post("/api/export").json())
+        response = self.client.get(job["url"], params={"name": "9月の旅行"})
+        self.assertEqual(response.status_code, 200)
+        # 日本語の名前は RFC 5987 の形 (filename*) で送る
+        self.assertIn("filename*=utf-8''9%E6%9C%88%E3%81%AE%E6%97%85%E8%A1%8C.mp4", response.headers["content-disposition"])
+
     def test_errors_tell_the_user_what_to_do(self):
         self.client.post("/api/clips/select-all", json={"selected": False})
         response = self.client.post("/api/preview")

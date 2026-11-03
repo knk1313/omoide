@@ -33,7 +33,7 @@
 | `POST /api/export` | 完成版の生成を始める（202） | なし |
 | `GET /api/jobs/<ジョブID>` | 生成の状態と進み具合 | なし |
 | `GET /media/preview` | 最新のプレビュー（MP4） | なし |
-| `GET /download/output` | 最新の完成版（添付ファイルとして返す） | なし |
+| `GET /download/output?name=<名前>` | 最新の完成版（添付ファイルとして返す）。`name`は保存する名前で、パスの区切りや制御文字を除き、80文字までにして`.mp4`を付ける | なし |
 | `DELETE /api/temporary` | プレビューとパネル単体の動画を消す | なし |
 
 採用・除外と速度を変えると、その都度`.setlog-join/projects/project.json`へ保存する。
