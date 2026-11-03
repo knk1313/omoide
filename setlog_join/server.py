@@ -17,7 +17,7 @@ from starlette.types import Scope
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
 from .jobs import Analyzer, InsufficientSpace, JobManager, JobsBusy, NothingSelected, analyze_video
 from .uploads import UploadError, save_upload, upload_path
-from .workspace import PanelEntry, Workspace
+from .workspace import DateConflict, PanelEntry, Workspace
 
 WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -195,6 +195,8 @@ def create_app(
             return workspace.video_json(workspace.find_video(name))
         except KeyError:
             raise HTTPException(status_code=404, detail="動画がありません") from None
+        except DateConflict as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
 

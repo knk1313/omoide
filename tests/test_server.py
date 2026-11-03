@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import io
 import tempfile
 import time
@@ -371,7 +372,7 @@ class VideosApiTest(ServerTestCase):
 
     def test_thumbnail_failure_does_not_leave_the_job_running(self):
         with mock.patch.object(Workspace, "ensure_thumbnails", side_effect=RuntimeError("ffmpeg failed")):
-            job = self.wait(self.upload("trip.mp4", b"video").json())
+            job = self.wait(self.upload("trip.mp4", b"trip video").json())
         self.assertEqual(job["status"], "failed")
         self.assertIn("もう一度", job["error"])
         self.assertFalse((self.upload_dir / "trip.mp4").exists())
@@ -396,10 +397,33 @@ class VideosApiTest(ServerTestCase):
         self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": "2026-02-30"}).status_code, 422)
         self.assertEqual(self.client.patch("/api/videos/nope", json={"date": "2026-09-19"}).status_code, 404)
 
+    def test_rejects_dates_after_today(self):
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        response = self.client.patch("/api/videos/setlog", json={"date": tomorrow})
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("明日以降の日付は入力できません", response.json()["detail"])
+        self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": date.today().isoformat()}).status_code, 200)
+
+    def test_rejects_a_date_another_video_already_has(self):
+        self.wait(self.upload("later.mp4", b"another video").json())
+        self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": "2026-09-19"}).status_code, 200)
+        response = self.client.patch("/api/videos/later", json={"date": "2026-09-19"})
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("「setlog」の撮影日", response.json()["detail"])
+        # 同じ動画に同じ日付を入れ直すのは受け付ける
+        self.assertEqual(self.client.patch("/api/videos/setlog", json={"date": "2026-09-19"}).status_code, 200)
+
+    def test_rejects_the_same_video_uploaded_twice(self):
+        job = self.wait(self.upload("copy.mov", b"video").json())
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("「setlog」として取り込み済み", job["error"])
+        self.assertFalse((self.upload_dir / "copy.mov").exists())
+        self.assertEqual([v["name"] for v in self.client.get("/api/project").json()["videos"]], ["setlog"])
+
     def test_videos_are_ordered_by_the_entered_date(self):
         self.wait(self.upload("later.mp4", b"v").json())
         self.client.patch("/api/videos/later", json={"date": "2026-01-01"})
-        self.client.patch("/api/videos/setlog", json={"date": "2026-12-31"})
+        self.client.patch("/api/videos/setlog", json={"date": "2026-02-01"})
         names = [v["name"] for v in self.client.get("/api/project").json()["videos"]]
         self.assertEqual(names, ["later", "setlog"])
         self.assertEqual(self.client.get("/api/clips").json()[0]["video"], "later")

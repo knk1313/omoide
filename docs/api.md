@@ -23,8 +23,8 @@
 | `POST /api/session/login` | ログインする | `{"password": "..."}` |
 | `POST /api/session/logout` | ログアウトする | なし |
 | `GET /api/project` | 速度、パネルの総数と採用数、推定時間（秒）、出力の大きさ（`frame`）、動画の一覧 | なし |
-| `POST /api/videos` | 動画を取り込み、解析のジョブを始める（202）。本文は動画そのもの、名前はURLエンコードして`X-File-Name`で送る | 動画 |
-| `PATCH /api/videos/<動画名>` | 撮影日を入力する。`null`なら入力を消す | `{"date": "2026-09-19"}` |
+| `POST /api/videos` | 動画を取り込み、解析のジョブを始める（202）。本文は動画そのもの、名前はURLエンコードして`X-File-Name`で送る。取り込み済みの動画と中身が同じなら、ジョブを失敗にしてファイルを消す | 動画 |
+| `PATCH /api/videos/<動画名>` | 撮影日を入力する。`null`なら入力を消す。形が正しくない・明日以降（Macの日付で数える）なら422、ほかの動画の撮影日と同じなら409 | `{"date": "2026-09-19"}` |
 | `GET /api/clips` | 中身のあるパネルの一覧（動画、クリップ、パネルの順） | なし |
 | `PATCH /api/clips/<ID>` | パネルを採用・除外する | `{"selected": true}` |
 | `POST /api/clips/select-all` | まとめて採用・除外する。`panel`（1〜3）でユーザーを絞り、`only`なら対象以外を除外する | `{"selected": true, "panel": 2, "only": true}` |
