@@ -11,7 +11,7 @@ export default function NotFoundContent() {
                 to="/"
                 className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand px-5 py-2 text-sm font-medium text-on-brand hover:bg-brand-hover"
             >
-                ホームへ戻る
+                クリップ選択へ戻る
             </Link>
         </div>
     );
