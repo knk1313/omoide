@@ -10,8 +10,8 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    // CI のランナー（4 コア）では、既定の半分（2 並列）だと待ち時間が長いので、コアの数だけ並べる
-    workers: process.env.CI ? "100%" : undefined,
+    // E2E は API の応答や描画を待つ時間が長いので、CI のランナーのコアが少なくても（非公開のリポジトリは 2 コア）4 並列にする
+    workers: process.env.CI ? 4 : undefined,
     reporter: process.env.CI ? [["github"], ["list"]] : "list",
     use: {
         baseURL: "http://localhost:4317",
@@ -25,7 +25,8 @@ export default defineConfig({
         { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     ],
     webServer: {
-        command: "npm run build && npm run preview -- --port 4317 --strictPort",
+        // 型チェックは CI の check ジョブと npm run check で行うので、ここではビルドだけにする
+        command: "npx vite build && npm run preview -- --port 4317 --strictPort",
         url: "http://localhost:4317",
         // 別のプロジェクトのプレビューを誤って使わないよう、毎回このプロジェクトをビルドして起動する
         reuseExistingServer: false,
