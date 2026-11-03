@@ -5,6 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
 // `npm run test:e2e`。初回は `npm run test:e2e:install` で Chromium を入れる。
 export default defineConfig({
     testDir: "./e2e",
+    // 画面の写真（PR 用）は SCREENSHOTS_DIR を指定したときだけ撮る
+    testIgnore: process.env.SCREENSHOTS_DIR ? [] : ["**/screenshots.spec.ts"],
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,

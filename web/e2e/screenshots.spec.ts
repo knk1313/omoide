@@ -4,9 +4,8 @@ import { mockServer } from "./mockServer";
 
 // PR に載せる画面の写真を撮る。SCREENSHOTS_DIR を指定したときだけ動く。
 // SCREENSHOTS_DIR=/tmp/shots npx playwright test screenshots --project=mobile
+// （playwright.config.ts の testIgnore で、指定がないときは読み込まない）
 const dir = process.env.SCREENSHOTS_DIR;
-
-test.skip(!dir, "SCREENSHOTS_DIR を指定したときだけ撮る");
 
 const SHOTS = [
     { name: "login", path: "/", h1: "パスワードを入力", loggedIn: false },
