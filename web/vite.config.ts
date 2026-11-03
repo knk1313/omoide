@@ -14,9 +14,16 @@ function appConfigHtml(): Plugin {
     };
 }
 
+// npm run dev のとき、API・動画・共有 URL は Mac 側のサーバー (python main.py serve) へ渡す。
+// 例: OMOIDE_SERVER=http://127.0.0.1:8080 npm run dev
+const server = process.env.OMOIDE_SERVER ?? "http://127.0.0.1:8080";
+
 export default defineConfig({
     plugins: [react(), tailwindcss(), appConfigHtml()],
     resolve: {
         alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    },
+    server: {
+        proxy: Object.fromEntries(["/api", "/media", "/download", "/p/"].map((path) => [path, server])),
     },
 });
