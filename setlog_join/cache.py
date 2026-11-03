@@ -14,7 +14,7 @@ from .segments import Clip
 
 CACHE_DIR = Path(".setlog-join/cache")
 # 境界検出・カード検出・空判定のロジックを変えたら上げる。古いキャッシュは使わなくなる
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 def load_or_scan(info: VideoInfo, cache_dir: Path = CACHE_DIR) -> VideoScan:
@@ -63,6 +63,7 @@ def _encode(scan: VideoScan) -> dict:
             {
                 "index": c.clip.index, "start": c.clip.start, "end": c.clip.end,
                 "filled": [p.position for p in c.filled],
+                "black_edges": {str(position): list(edge) for position, edge in c.black_edges.items()},
             }
             for c in scan.clips
         ],
@@ -76,6 +77,7 @@ def _decode(info: VideoInfo, data: dict) -> VideoScan:
         ScannedClip(
             clip=Clip(index=c["index"], start=c["start"], end=c["end"]),
             filled=[by_position[position] for position in c["filled"]],
+            black_edges={int(position): tuple(edge) for position, edge in c["black_edges"].items()},
         )
         for c in data["clips"]
     ]
