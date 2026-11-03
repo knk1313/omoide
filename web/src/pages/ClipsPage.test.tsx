@@ -7,6 +7,8 @@ async function openClips(routes: Parameters<typeof fakeServer>[0] = {}) {
     const server = fakeServer({ ...loggedIn, ...routes });
     const app = renderApp("/");
     await screen.findByRole("heading", { name: "使うクリップを選ぶ" });
+    // 見出しは読み込み中から出るので、パネルが並ぶまで待つ
+    await screen.findByRole("button", { name: "次へ" });
     return { server, ...app };
 }
 
@@ -82,11 +84,11 @@ describe("クリップ選択画面", () => {
 
     it("ユーザーで絞り込める", async () => {
         const { user } = await openClips();
-        const filter = screen.getByRole("radiogroup", { name: "表示するユーザー" });
-        expect(within(filter).getAllByRole("radio").map((r) => r.textContent)).toEqual(["全員3", "ユーザー11", "ユーザー21", "ユーザー31"]);
+        const filter = screen.getByRole("group", { name: "表示するユーザー" });
+        expect(within(filter).getAllByRole("radio").map((r) => r.closest("label")?.textContent)).toEqual(["全員（3）", "ユーザー1（1）", "ユーザー2（1）", "ユーザー3（1）"]);
 
         await user.click(within(filter).getByRole("radio", { name: /^ユーザー2/ }));
-        expect(within(filter).getByRole("radio", { name: /^ユーザー2/ })).toHaveAttribute("aria-checked", "true");
+        expect(within(filter).getByRole("radio", { name: /^ユーザー2/ })).toBeChecked();
         expect(tiles().map((b) => b.getAttribute("aria-label"))).toEqual([
             "ユーザー2・クリップ 1（採用）",
         ]);

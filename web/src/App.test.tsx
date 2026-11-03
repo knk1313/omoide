@@ -13,7 +13,7 @@ describe("画面の骨組み", () => {
         expect(await screen.findByRole("heading", { name: "使うクリップを選ぶ" })).toBeInTheDocument();
         expect(currentStep()).toHaveTextContent(/ステップ 2 \/ 4、現在のステップ.*選ぶ/);
 
-        await user.click(screen.getByRole("button", { name: "次へ" }));
+        await user.click(await screen.findByRole("button", { name: "次へ" }));
         // 速度の画面は、要約を読み込んでから見出しを出すので、待つ
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
         expect(currentStep()).toHaveTextContent(/ステップ 3 \/ 4、現在のステップ.*速度/);

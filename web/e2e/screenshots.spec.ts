@@ -25,6 +25,6 @@ for (const s of SHOTS) {
         // 画像と動画の読み込みを待つ
         await page.waitForLoadState("networkidle");
         await page.waitForTimeout(500);
-        await page.screenshot({ path: `${dir}/${info.project.name}-${s.name}.png`, fullPage: false });
+        await page.screenshot({ path: `${dir}/${info.project.name}-${s.name}.png`, fullPage: !!process.env.FULL_PAGE });
     });
 }
