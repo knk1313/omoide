@@ -24,6 +24,10 @@ python3 -m venv .venv
 # 起動するとパスワードを聞かれ、URL と QR コードが表示される。既定では 2 時間で終了する
 # 動画はスマホからアップロードでき、input/ に置いた動画も読み込む
 .venv/bin/python main.py serve --expires 2h
+
+# input/ の動画と、そこから作った生成物（output/ と .setlog-join/）をまとめて消す
+# 消す対象と大きさを表示し、確認してから消す（--yes で確認を省く）。serve は先に止めておく
+.venv/bin/python main.py clean
 ```
 
 - 動画はメタデータの作成日時（無ければファイルの更新日時）で時系列に並べる
