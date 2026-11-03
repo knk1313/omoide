@@ -1,10 +1,13 @@
 import argparse
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from .export import export_video
 from .inputs import find_videos
+from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
+from .probe import VideoInfo
 from .scan import VideoScan, scan_video
 
 
@@ -19,22 +22,30 @@ def main(argv: list[str] | None = None) -> int:
         help="切り出したパネル動画を書き出す (既定: output)",
     )
 
+    join = sub.add_parser("join", help="選んだパネルを人ごとにつなぎ、1 本の動画として書き出す")
+    join.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    join.add_argument(
+        "--select", default=None,
+        help="使うパネルを `<動画名>/<クリップ番号>-<パネル番号>` のカンマ区切りで指定する "
+             "(例: collection_export/001-1,collection_export/002-3)。省略すると中身のあるパネルをすべて使う",
+    )
+    join.add_argument(
+        "--speed", type=float, default=1.0, choices=SPEEDS, help="全体の再生速度 (既定: 1)",
+    )
+    join.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
+
     args = parser.parse_args(argv)
     if args.command == "scan":
         return scan_command(args.input, args.export)
+    if args.command == "join":
+        return join_command(args.input, args.select, args.speed, args.output)
     return 1
 
 
 def scan_command(folder: Path, export_dir: Path | None) -> int:
-    for tool in ("ffmpeg", "ffprobe"):
-        if shutil.which(tool) is None:
-            return _fail(f"{tool} が見つかりません。`brew install ffmpeg` でインストールしてください。")
-    if not folder.is_dir():
-        return _fail(f"入力フォルダがありません: {folder}")
-
-    videos = find_videos(folder)
-    if not videos:
-        return _fail(f"{folder} に MP4 / MOV の動画がありません。")
+    videos = _load_videos(folder)
+    if videos is None:
+        return 1
 
     scans = []
     for info in videos:
@@ -54,6 +65,52 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     if export_dir is not None:
         print(f"切り出したパネル動画: {export_dir}/")
     return 0
+
+
+def join_command(folder: Path, select: str | None, speed: float, output_dir: Path) -> int:
+    try:
+        refs = [PanelRef.parse(text) for text in select.split(",")] if select is not None else None
+    except SelectionError as e:
+        return _fail(str(e))
+
+    videos = _load_videos(folder)
+    if videos is None:
+        return 1
+
+    scans = []
+    for info in videos:
+        try:
+            scans.append(scan_video(info))
+        except ValueError as e:
+            return _fail(f"{info.path.name}: {e}")
+
+    try:
+        segments = resolve_segments(scans, refs)
+    except SelectionError as e:
+        return _fail("書き出せませんでした。\n" + "\n".join(f"  {p}" for p in e.problems))
+
+    out_path = output_dir / f"omoide-{datetime.now():%Y%m%d-%H%M%S}.mp4"
+    print(f"{len(segments)} 件のパネルを {speed:g}x でつないでいます…")
+    join_segments(segments, speed, out_path)
+    seconds = sum(s.clip.duration for s in segments) / speed
+    print(f"書き出しました: {out_path}  (約 {seconds:.1f}s)")
+    return 0
+
+
+def _load_videos(folder: Path) -> list[VideoInfo] | None:
+    """入力を確かめて動画の一覧を返す。使えないときはエラーを表示して None を返す。"""
+    for tool in ("ffmpeg", "ffprobe"):
+        if shutil.which(tool) is None:
+            _fail(f"{tool} が見つかりません。`brew install ffmpeg` でインストールしてください。")
+            return None
+    if not folder.is_dir():
+        _fail(f"入力フォルダがありません: {folder}")
+        return None
+    videos = find_videos(folder)
+    if not videos:
+        _fail(f"{folder} に MP4 / MOV の動画がありません。")
+        return None
+    return videos
 
 
 def _print_scan(scan: VideoScan) -> None:
