@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from setlog_join.join import PanelRef, Segment, SelectionError, join_segments, resolve_segments
+from setlog_join.join import PREVIEW_QUALITY, PanelRef, Segment, SelectionError, join_segments, resolve_segments
 from setlog_join.panels import Panel
 from setlog_join.probe import VideoInfo, probe
 from setlog_join.scan import ScannedClip, VideoScan
@@ -89,6 +89,22 @@ class JoinSegmentsTest(unittest.TestCase):
             self.assertColor(self._pixel(out, 0.8, 320, 180), (255, 255, 0))
             # 正方形のパネルは左右を黒で埋める
             self.assertColor(self._pixel(out, 0.8, 20, 180), (0, 0, 0))
+
+    def test_preview_quality_shrinks_and_reports_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = self._stacked(Path(tmp) / "first.mp4", "640x360", ["red", "green", "blue"])
+            segments = [Segment(first, Clip(1, 0.0, 1.0), _panels()[0]), Segment(first, Clip(2, 1.0, 2.0), _panels()[1])]
+            out = Path(tmp) / "preview.mp4"
+            seen = []
+            join_segments(segments, 1.0, out, quality=PREVIEW_QUALITY, progress=seen.append)
+            result = probe(out)
+            data = out.read_bytes()
+        self.assertEqual((result.width, result.height), (480, 270))
+        self.assertEqual(seen, sorted(seen))
+        self.assertEqual(seen[-1], 1.0)
+        self.assertEqual(len(seen), 3)
+        # つないだ後の動画も、目次が先頭にある
+        self.assertLess(data.find(b"moov"), data.find(b"mdat"))
 
     def test_rejects_unknown_speed(self):
         with self.assertRaises(ValueError):

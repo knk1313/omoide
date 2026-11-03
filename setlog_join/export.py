@@ -24,14 +24,18 @@ def export_video(scan: VideoScan, export_dir: Path) -> None:
 
 def export_panel_clip(
     info: VideoInfo, clip: Clip, panel: Panel, out_path: Path, filters: Sequence[str] = (),
+    encoder_args: Sequence[str] = (),
 ) -> None:
-    """パネルを切り出して書き出す。filters は切り出しの後に続けて掛ける映像フィルタ。"""
+    """パネルを切り出して書き出す。filters は切り出しの後に続けて掛ける映像フィルタ。
+
+    encoder_args は libx264 に渡す画質や速度の指定 (例: `-crf 30`)。省略すると ffmpeg の既定値を使う。
+    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ffmpeg.run(
         "-y",
         "-ss", f"{clip.start:.3f}", "-t", f"{clip.duration:.3f}", "-i", str(info.path),
         "-vf", ",".join([panel.crop_filter, *filters]), "-an",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", *encoder_args, "-pix_fmt", "yuv420p",
         # スマホで全体を読み込む前に再生を始められるよう、目次 (moov) を先頭に置く
         "-movflags", "+faststart",
         str(out_path),

@@ -2,6 +2,7 @@
 
 import re
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -45,6 +46,18 @@ class PanelRef:
 
 
 @dataclass(frozen=True)
+class Quality:
+    # 幅の上限。None なら最初のパネルの大きさのまま
+    max_width: int | None
+    encoder_args: tuple[str, ...]
+
+
+FULL_QUALITY = Quality(max_width=None, encoder_args=())
+# 選択を確かめるためのプレビュー。画質を落として速く作る
+PREVIEW_QUALITY = Quality(max_width=480, encoder_args=("-preset", "veryfast", "-crf", "30"))
+
+
+@dataclass(frozen=True)
 class Segment:
     info: VideoInfo
     clip: Clip
@@ -72,12 +85,21 @@ def resolve_segments(scans: list[VideoScan], refs: list[PanelRef] | None) -> lis
     return sorted(segments, key=lambda s: (s.panel.position, order[s.info.path], s.clip.index))
 
 
-def join_segments(segments: list[Segment], speed: float, out_path: Path) -> None:
-    """パネルを 1 本ずつ同じ形式に変換してから、再エンコードせずにつなぐ。"""
+def join_segments(
+    segments: list[Segment], speed: float, out_path: Path,
+    quality: Quality = FULL_QUALITY, progress: Callable[[float], None] | None = None,
+) -> None:
+    """パネルを 1 本ずつ同じ形式に変換してから、再エンコードせずにつなぐ。
+
+    progress には、終わった割合 (0〜1) をパネルを 1 本変換するたびに渡す。
+    """
     if speed not in SPEEDS:
         raise ValueError(f"速度は {', '.join(f'{s:g}' for s in SPEEDS)} のどれかにしてください: {speed:g}")
     # 動画ごとにパネルの解像度が違っても、最初のパネルの大きさに縦横比を保って収め、余白は黒で埋める
     width, height = segments[0].panel.width, segments[0].panel.height
+    if quality.max_width is not None and width > quality.max_width:
+        height = round(height * quality.max_width / width / 2) * 2
+        width = quality.max_width
     fps = segments[0].info.fps
     filters = [
         f"scale={width}:{height}:force_original_aspect_ratio=decrease",
@@ -93,11 +115,20 @@ def join_segments(segments: list[Segment], speed: float, out_path: Path) -> None
         parts = []
         for i, segment in enumerate(segments):
             part = Path(tmp) / f"{i:05d}.mp4"
-            export_panel_clip(segment.info, segment.clip, segment.panel, part, filters)
+            export_panel_clip(segment.info, segment.clip, segment.panel, part, filters, quality.encoder_args)
             parts.append(part)
+            if progress is not None:
+                # 最後のつなぐ処理の分を残しておく
+                progress((i + 1) / (len(segments) + 1))
         concat_list = Path(tmp) / "concat.txt"
         concat_list.write_text("".join(f"file '{p.name}'\n" for p in parts))
-        ffmpeg.run("-y", "-f", "concat", "-safe", "0", "-i", str(concat_list), "-c", "copy", str(out_path))
+        ffmpeg.run(
+            "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list), "-c", "copy",
+            # つないだ後の動画も、全体を読み込む前に再生を始められるようにする
+            "-movflags", "+faststart", str(out_path),
+        )
+    if progress is not None:
+        progress(1.0)
 
 
 def _lookup(scans: list[VideoScan], refs: list[PanelRef]) -> list[Segment]:
