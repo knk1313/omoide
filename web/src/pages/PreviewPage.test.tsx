@@ -1,0 +1,135 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { Job } from "@/api/types";
+import { fakeServer, loggedIn } from "@/test/fakeServer";
+import { renderApp } from "@/test/renderApp";
+import { polling } from "./preview/useJob";
+
+const job = (kind: Job["kind"], status: Job["status"], progress: number, extra: Partial<Job> = {}): Job => ({
+    id: `${kind}-1`, kind, status, progress, error: null,
+    url: status === "done" ? (kind === "preview" ? "/media/preview?v=preview-1" : "/download/output") : null,
+    ...extra,
+});
+
+/** 呼ばれるたびに、次の状態を返す（最後の状態は繰り返す）。 */
+function sequence(...replies: { status: number; body?: unknown }[]) {
+    let i = 0;
+    return () => replies[Math.min(i++, replies.length - 1)];
+}
+
+const ok = (body: unknown) => ({ status: 200, body });
+const accepted = (body: unknown) => ({ status: 202, body });
+
+beforeEach(() => {
+    polling.intervalMs = 5;
+});
+afterEach(() => {
+    polling.intervalMs = 700;
+});
+
+async function openPreview(routes: Parameters<typeof fakeServer>[0]) {
+    const server = fakeServer({ ...loggedIn, ...routes });
+    const app = renderApp("/preview");
+    await screen.findByRole("heading", { name: "プレビューを確認" });
+    return { server, ...app };
+}
+
+describe("プレビュー・ダウンロード画面", () => {
+    it("開くとプレビューを作り始め、進み具合を表示して、できたら再生できる", async () => {
+        // 進み具合を確かめるまでは 40% のままにし、確かめた後で作り終えたことにする
+        let finished = false;
+        const { server } = await openPreview({
+            "POST /api/preview": accepted(job("preview", "queued", 0)),
+            "GET /api/jobs/preview-1": () => ok(finished ? job("preview", "done", 1) : job("preview", "running", 0.4)),
+        });
+        const bar = await screen.findByRole("progressbar", { name: "プレビューを作っています" });
+        await waitFor(() => expect(bar).toHaveAttribute("aria-valuenow", "40"));
+        expect(screen.getByText("40%")).toBeInTheDocument();
+        finished = true;
+
+        const video = await screen.findByLabelText("プレビュー動画");
+        expect(video).toHaveAttribute("src", "/media/preview?v=preview-1");
+        expect(video).toHaveAttribute("playsinline");
+        expect(server.calls.filter((c) => c.method === "POST" && c.path === "/api/preview")).toHaveLength(1);
+    });
+
+    it("作り終えたプレビューがあれば、すぐに再生できる", async () => {
+        await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
+        expect(await screen.findByLabelText("プレビュー動画")).toBeInTheDocument();
+        expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    });
+
+    it("プレビューに失敗したら、理由を表示してもう一度試せる", async () => {
+        const { user } = await openPreview({
+            "POST /api/preview": sequence(
+                accepted(job("preview", "failed", 0.3, { error: "動画の生成に失敗しました。もう一度お試しください" })),
+                accepted(job("preview", "done", 1)),
+            ),
+        });
+        expect(await screen.findByRole("alert")).toHaveTextContent("動画の生成に失敗しました");
+        await user.click(screen.getByRole("button", { name: "もう一度試す" }));
+        expect(await screen.findByLabelText("プレビュー動画")).toBeInTheDocument();
+    });
+
+    it("始められないときは、サーバーの理由を表示する", async () => {
+        await openPreview({
+            "POST /api/preview": { status: 422, body: { detail: "採用しているパネルがありません。クリップを選んでください" } },
+        });
+        expect(await screen.findByRole("alert")).toHaveTextContent("クリップを選んでください");
+    });
+
+    it("完成版はプレビューができるまで作れない", async () => {
+        await openPreview({
+            "POST /api/preview": accepted(job("preview", "running", 0.1)),
+            "GET /api/jobs/preview-1": ok(job("preview", "running", 0.2)),
+        });
+        expect(screen.getByRole("button", { name: "完成版を作る" })).toBeDisabled();
+    });
+
+    it("完成版を作り、できたら保存できる", async () => {
+        const { user } = await openPreview({
+            "POST /api/preview": accepted(job("preview", "done", 1)),
+            "POST /api/export": accepted(job("export", "running", 0)),
+            "GET /api/jobs/export-1": sequence(ok(job("export", "running", 0.5)), ok(job("export", "done", 1))),
+        });
+        await user.click(await screen.findByRole("button", { name: "完成版を作る" }));
+        expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
+
+        const save = await screen.findByRole("link", { name: "保存する" });
+        expect(save).toHaveAttribute("href", "/download/output");
+        expect(save).toHaveAttribute("download");
+        expect(screen.getByText("完成版ができました")).toBeInTheDocument();
+    });
+
+    it("生成の途中で Mac につながらなくなったら、原因と対処を並べて案内する", async () => {
+        await openPreview({
+            "POST /api/preview": accepted(job("preview", "running", 0.1)),
+            "GET /api/jobs/preview-1": new TypeError("Failed to fetch"),
+        });
+        expect(await screen.findByRole("heading", { name: "Mac につながりません" })).toBeInTheDocument();
+        const checks = screen.getAllByRole("listitem").map((li) => li.textContent);
+        expect(checks.join("\n")).toMatch(/同じ Wi-Fi/);
+        expect(checks.join("\n")).toMatch(/スリープ/);
+        expect(checks.join("\n")).toMatch(/serve が動いているか/);
+    });
+
+    it("生成の途中で共有の期限が切れたら、その案内に切り替える", async () => {
+        await openPreview({
+            "POST /api/preview": accepted(job("preview", "running", 0.1)),
+            "GET /api/jobs/preview-1": { status: 410, body: { detail: "共有の期限が切れました" } },
+        });
+        expect(await screen.findByRole("heading", { name: "共有の期限が切れました" })).toBeInTheDocument();
+    });
+
+    it("選択に戻る・速度を変えるで前の画面へ移れる", async () => {
+        const { user } = await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
+        await user.click(screen.getByRole("button", { name: "速度を変える" }));
+        expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
+    });
+
+    it("手順の表示は 3 番目", async () => {
+        await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
+        const steps = screen.getByRole("list", { name: "手順" });
+        expect(within(steps).getByText("3. 確認")).toHaveAttribute("aria-current", "step");
+    });
+});
