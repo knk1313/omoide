@@ -1,0 +1,38 @@
+name: Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+
+# PR に続けて push したときは、前の実行を止める。main への push は止めずに最後まで確かめる
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.nvmrc
+      - id: node-modules
+        uses: actions/cache@v6
+        with:
+          path: web/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('web/.nvmrc', 'web/package-lock.json') }}
+      - if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: npm run check
+      - run: npm run build
