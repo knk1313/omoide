@@ -134,7 +134,8 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     # サーバーの依存は scan / join では使わないので、ここで読み込む
     import uvicorn
 
-    from .server import WEB_DIST, create_app
+    from .server import create_app
+    from .webbuild import build_problem
     from .workspace import Workspace
 
     try:
@@ -164,8 +165,9 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     panels = sum(s.candidate_count for s in scans)
     print(f"動画 {len(scans)} 本 / 中身のあるパネル {panels} 件を読み込みました。")
 
-    if not (WEB_DIST / "index.html").is_file():
-        print("画面がまだビルドされていません。`cd web && npm run build` を実行してください。", file=sys.stderr)
+    problem = build_problem()
+    if problem:
+        print(f"\n注意: {problem}", file=sys.stderr)
 
     auth = ShareAuth(password, lifetime)
     url = f"http://{host}:{port}/p/{auth.token}"
