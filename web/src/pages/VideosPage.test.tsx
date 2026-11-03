@@ -1,13 +1,20 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job, Project, Video } from "@/api/types";
 import { fakeServer, loggedIn, sampleProject } from "@/test/fakeServer";
 import { renderApp } from "@/test/renderApp";
 import { polling } from "./preview/useJob";
 
-/** XMLHttpRequest の代わり。送った量を半分・全部と知らせてから、決めた応答を返す。 */
-function fakeUpload(status: number, body: unknown) {
-    const sent: { headers: Record<string, string>; file: File | null } = { headers: {}, file: null };
+/**
+ * XMLHttpRequest の代わり。送った量を半分と知らせてから、決めた応答を返す。
+ * manual なら、テストが finish() を呼ぶまで応答しない（途中の表示を確かめるため）。
+ */
+function fakeUpload(status: number, body: unknown, { manual = false } = {}) {
+    const sent: { headers: Record<string, string>; file: File | null; finish: () => void } = {
+        headers: {},
+        file: null,
+        finish: () => {},
+    };
     class FakeXHR {
         upload: { onprogress: ((e: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = { onprogress: null };
         onload: (() => void) | null = null;
@@ -21,11 +28,12 @@ function fakeUpload(status: number, body: unknown) {
         send(file: File) {
             sent.file = file;
             setTimeout(() => this.upload.onprogress?.({ lengthComputable: true, loaded: 50, total: 100 }), 5);
-            setTimeout(() => {
+            sent.finish = () => {
                 this.status = status;
                 this.responseText = JSON.stringify(body);
                 this.onload?.();
-            }, 30);
+            };
+            if (!manual) setTimeout(sent.finish, 30);
         }
     }
     vi.stubGlobal("XMLHttpRequest", FakeXHR);
@@ -76,11 +84,13 @@ describe("動画を取り込む画面", () => {
             "GET /api/jobs/analyze-1": () => ({ status: 200, body: finished ? analyzeJob("done", { result: newVideo }) : analyzeJob("running") }),
             "PATCH /api/videos/nov": { status: 200, body: { ...newVideo, date: "2026-10-31" } },
         });
-        const sent = fakeUpload(202, analyzeJob("queued"));
+        const sent = fakeUpload(202, analyzeJob("queued"), { manual: true });
         const file = chooseFile();
 
         expect(await screen.findByRole("progressbar", { name: "アップロードしています" })).toBeInTheDocument();
         expect(await screen.findByText("50%")).toBeInTheDocument();
+        // 送り終えたことにして、解析の表示へ進める
+        act(() => sent.finish());
         expect(await screen.findByRole("progressbar", { name: "動画を読み取っています" })).toBeInTheDocument();
         expect(sent.file).toBe(file);
         expect(sent.headers["X-File-Name"]).toBe(encodeURIComponent("11月.mov"));
