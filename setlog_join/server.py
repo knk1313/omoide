@@ -3,14 +3,14 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import Scope
 
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
-from .scan import VideoScan
+from .workspace import PanelEntry, Workspace
 
 WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -43,7 +43,15 @@ class LoginRequest(BaseModel):
     password: str = Field(max_length=MAX_PASSWORD_LENGTH)
 
 
-def create_app(scans: list[VideoScan], auth: ShareAuth, web_dir: Path = WEB_DIST) -> FastAPI:
+class SelectionRequest(BaseModel):
+    selected: bool
+
+
+class SettingsRequest(BaseModel):
+    speed: float
+
+
+def create_app(workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST) -> FastAPI:
     # API の仕様書の画面は使わないので公開しない
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -57,7 +65,8 @@ def create_app(scans: list[VideoScan], auth: ShareAuth, web_dir: Path = WEB_DIST
         # 共有 URL を開いていない端末には、サーバーがあることも見せない
         if not auth.token_matches(request.cookies.get(GATE_COOKIE)):
             return JSONResponse({"detail": "Not Found"}, status_code=404)
-        if path.startswith("/api/") and path != _LOGIN_PATH:
+        # 動画とサムネイル (/media/) も、ログインしていなければ渡さない
+        if path.startswith(("/api/", "/media/")) and path != _LOGIN_PATH:
             if not auth.session_valid(request.cookies.get(SESSION_COOKIE)):
                 return JSONResponse({"detail": "ログインしてください"}, status_code=401)
         return await call_next(request)
@@ -95,12 +104,46 @@ def create_app(scans: list[VideoScan], auth: ShareAuth, web_dir: Path = WEB_DIST
 
     @app.get("/api/health")
     def health() -> dict:
-        return {
-            "status": "ok",
-            "videos": len(scans),
-            "clips": sum(len(s.clips) for s in scans),
-            "panels": sum(s.candidate_count for s in scans),
-        }
+        return {"status": "ok"}
+
+    @app.get("/api/project")
+    def project() -> dict:
+        return workspace.summary()
+
+    @app.get("/api/clips")
+    def clips() -> list[dict]:
+        return [_clip_json(workspace, entry) for entry in workspace.entries.values()]
+
+    @app.patch("/api/clips/{panel_id:path}")
+    def update_clip(panel_id: str, body: SelectionRequest) -> dict:
+        entry = _find(workspace, panel_id)
+        workspace.set_selected(entry.id, body.selected)
+        return _clip_json(workspace, entry)
+
+    @app.post("/api/clips/select-all")
+    def select_all(body: SelectionRequest) -> dict:
+        workspace.select_all(body.selected)
+        return workspace.summary()
+
+    @app.patch("/api/settings")
+    def update_settings(body: SettingsRequest) -> dict:
+        try:
+            workspace.set_speed(body.speed)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        return workspace.summary()
+
+    @app.get("/media/thumbnails/{panel_id:path}")
+    def thumbnail(panel_id: str) -> FileResponse:
+        path = workspace.thumbnail_path(_find(workspace, panel_id))
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="サムネイルがありません")
+        return FileResponse(path, media_type="image/jpeg")
+
+    @app.get("/media/clips/{panel_id:path}")
+    def clip_video(panel_id: str) -> FileResponse:
+        # FileResponse は Range リクエストに 206 で応え、Safari のシークに対応する
+        return FileResponse(workspace.clip_path(_find(workspace, panel_id)), media_type="video/mp4")
 
     # 存在しない API に index.html を返さないよう、画面の配信より先に 404 を返す
     @app.api_route("/api/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
@@ -115,6 +158,29 @@ def create_app(scans: list[VideoScan], auth: ShareAuth, web_dir: Path = WEB_DIST
             return _NOT_BUILT_HTML
 
     return app
+
+
+def _find(workspace: Workspace, panel_id: str) -> PanelEntry:
+    try:
+        return workspace.get(panel_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="パネルがありません") from None
+
+
+def _clip_json(workspace: Workspace, entry: PanelEntry) -> dict:
+    clip = entry.clip
+    return {
+        "id": entry.id,
+        "video": entry.ref.video,
+        "clip": entry.ref.clip,
+        "panel": entry.ref.panel,
+        "label": entry.panel.label,
+        "start": round(clip.start, 3),
+        "duration": round(clip.duration, 3),
+        "selected": workspace.is_selected(entry),
+        "thumbnail_url": f"/media/thumbnails/{entry.id}",
+        "video_url": f"/media/clips/{entry.id}",
+    }
 
 
 def _set_cookie(response: Response, name: str, value: str, auth: ShareAuth) -> None:
