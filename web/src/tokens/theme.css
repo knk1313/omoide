@@ -1,0 +1,184 @@
+/*
+ * セマンティックトークン（用途別の別名）。
+ * コンポーネントは原則としてここで定義した名前（bg-surface / text-text-muted / border-border など）を使い、
+ * プリミティブ（blue-900 など）は DADS がプリミティブで規定している箇所（チップラベルの色相など）に限って使う。
+ * 値の根拠は docs/dads-research.md 1.3 節と docs/decisions.md（D-07, D-12）を参照。
+ */
+@theme {
+  /* --- 面 --- */
+  --color-canvas: var(--color-solid-gray-50); /* アプリ全体の地 */
+  --color-surface: var(--color-white); /* カード・パネル・入力欄・メニュー */
+  --color-surface-muted: var(--color-solid-gray-50); /* 控えめな面（ストライプ行、閉じるボタンの hover など） */
+  --color-surface-strong: var(--color-solid-gray-100); /* テーブルヘッダー */
+  --color-surface-hover: var(--color-key-50); /* 行のホバー */
+  --color-surface-selected: var(--color-key-100); /* 行の選択 */
+  --color-surface-highlight: var(--color-key-900); /* ダッシュボード左上の強調面（ガイドブック Background Highlight） */
+  --color-on-highlight: var(--color-white);
+  --color-scrim: var(--color-opacity-gray-600); /* モーダルの暗幕 */
+  --color-scrim-light: var(--color-opacity-gray-100); /* ドロワーの暗幕 */
+
+  /* --- テキスト --- */
+  --color-text: var(--color-solid-gray-800);
+  --color-text-strong: var(--color-solid-gray-900);
+  --color-text-muted: var(--color-solid-gray-600); /* サポートテキスト・補足 */
+  /* 最も淡い文字色。gray-536 は白では 4.5:1 だが地（canvas: gray-50）では 4.05:1 に下がるため、gray-600 にする */
+  --color-text-subtle: var(--color-solid-gray-600);
+  --color-text-disabled: var(--color-solid-gray-420); /* disabled はコントラスト要件の対象外 */
+  --color-text-on-primary: var(--color-white);
+  --color-text-inverse: var(--color-white);
+
+  /* --- 線 --- */
+  --color-border: var(--color-solid-gray-420); /* 白に対して 3:1 を満たす最も淡い線 */
+  --color-border-on-canvas: var(--color-solid-gray-536); /* 地（canvas）の上に置くカードの枠線。canvas に対して 3:1 */
+  --color-border-strong: var(--color-solid-gray-600); /* 入力欄の枠 */
+  --color-border-emphasis: var(--color-black); /* 入力欄の hover、テーブルヘッダーの下線 */
+  --color-border-table: var(--color-solid-gray-500); /* ストライプ・選択ありのテーブル罫線 */
+  --color-border-disabled: var(--color-solid-gray-300);
+
+  /* --- プライマリー（キーカラー） --- */
+  --color-primary: var(--color-key-900);
+  --color-primary-hover: var(--color-key-1000);
+  --color-primary-active: var(--color-key-1200);
+  --color-primary-strong: var(--color-key-1100); /* チェック済みの hover */
+  --color-primary-surface: var(--color-key-50); /* テキストボタンの hover、情報の薄い面 */
+  --color-primary-surface-hover: var(--color-key-100);
+  --color-primary-outline-hover: var(--color-key-200);
+  --color-primary-outline-active: var(--color-key-300);
+
+  /* --- リンク --- */
+  --color-link: var(--color-blue-1000);
+  --color-link-hover: var(--color-blue-900);
+  /* DADS は orange-800。地（canvas）で 4.33:1 のため 1 段濃い orange-900 を使う */
+  --color-link-active: var(--color-orange-900);
+  --color-link-visited: var(--color-magenta-900);
+
+  /* --- フォーカス（DADS: Yellow-300 と Black の 2 重構造。変更禁止） --- */
+  --color-focus: var(--color-black);
+  --color-focus-ring: var(--color-yellow-300);
+
+  /* --- セマンティック --- */
+  --color-success: var(--color-success-2); /* 文字・枠・アイコン（白に対して 4.5:1） */
+  --color-success-surface: var(--color-green-50);
+  --color-success-hover: var(--color-green-1000);
+  /* DADS の error-1（red-800）は白では 4.5:1 を満たすが、地（canvas）では 4.1:1 に下がる。
+     ※必須やエラーテキストは地の上にも置くため、1 段濃い error-2（red-900）を使う */
+  --color-error: var(--color-error-2);
+  --color-error-hover: var(--color-red-1000);
+  --color-error-active: var(--color-red-1200);
+  --color-error-surface: var(--color-red-50);
+  --color-error-outline-hover: var(--color-red-200);
+  /* warning-yellow-2（yellow-900）は地（canvas）で 4.05:1 のため、1 段濃い yellow-1000 を使う */
+  --color-warning: var(--color-yellow-1000);
+  --color-warning-hover: var(--color-yellow-1100);
+  --color-warning-chip: var(--color-yellow-400); /* カラーチップ（非テキスト） */
+  --color-warning-surface: var(--color-yellow-50);
+  --color-info: var(--color-key-900);
+  --color-info-surface: var(--color-key-50);
+  --color-neutral: var(--color-solid-gray-536); /* 情報提示 2（ニュートラル） */
+  --color-neutral-surface: var(--color-solid-gray-50);
+
+  /* --- 無効状態 --- */
+  --color-disabled: var(--color-solid-gray-300); /* 塗りボタンの背景、枠線 */
+  --color-disabled-surface: var(--color-solid-gray-50); /* 入力欄の背景 */
+  --color-on-disabled: var(--color-solid-gray-50); /* 塗りボタン無効の文字 */
+
+  /* --- データ可視化（ガイドブック Blue パレット。docs/decisions.md D-12） --- */
+  --color-chart-1: var(--color-blue-900);
+  --color-chart-2: var(--color-yellow-800);
+  --color-chart-3: var(--color-blue-600);
+  --color-chart-4: var(--color-solid-gray-600);
+  --color-chart-5: var(--color-blue-1200);
+  --color-chart-seq-1: var(--color-blue-1200);
+  --color-chart-seq-2: var(--color-blue-900);
+  --color-chart-seq-3: var(--color-blue-600);
+  --color-chart-seq-4: var(--color-blue-400); /* 3:1 未満。値ラベルを併記する */
+  --color-chart-seq-5: var(--color-blue-200); /* 3:1 未満。値ラベルを併記する */
+  --color-chart-positive: var(--color-blue-600);
+  --color-chart-negative: var(--color-red-600);
+  --color-trend-up: var(--color-blue-800); /* 増加の文字色 */
+  --color-trend-down: var(--color-red-900); /* 減少の文字色 */
+  --color-chart-grid: var(--color-solid-gray-200);
+  --color-chart-axis: var(--color-solid-gray-600);
+  --color-chart-reference: var(--color-solid-gray-800); /* 目標値・比較線 */
+  --color-chart-neutral: var(--color-solid-gray-400); /* 強調しない比較対象 */
+
+  /* --- 寸法（レイアウトと操作部品の高さ） --- */
+  --spacing-target: 2.75rem; /* 44px: タップ領域の最小サイズ */
+  --spacing-control-sm: 2.5rem; /* 40px: 入力欄・セレクト sm */
+  --spacing-control-md: 3rem; /* 48px */
+  --spacing-control-lg: 3.5rem; /* 56px */
+  --spacing-header: 4rem; /* 64px: ヘッダーの高さ */
+  --spacing-sidebar: 16rem; /* 256px */
+  --spacing-sidebar-collapsed: 4.5rem; /* 72px */
+  --spacing-drawer: 18rem; /* 288px: DADS ドロワー */
+  --spacing-dialog: 30rem; /* 480px: DADS モーダルダイアログの最小幅 */
+  --spacing-popup-max: 19.25rem; /* 308px: メニューリストボックスの最大高さ（16 + 44 × 6.5） */
+  --spacing-table-min: 40rem; /* 640px: 横スクロールする表の最小幅 */
+  --spacing-chart: 16rem; /* 256px: グラフの標準高さ */
+  --spacing-chart-sm: 10rem;
+  --spacing-icon-sm: 1rem;
+  --spacing-icon-md: 1.25rem;
+  --spacing-icon-lg: 1.5rem;
+  --spacing-icon-xl: 2.75rem;
+
+  /* --- 文字間隔 --- */
+  --tracking-*: initial;
+  --tracking-0: 0;
+  --tracking-1: 0.01em;
+  --tracking-2: 0.02em;
+
+  /* --- モーション --- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* フォーカスインジケーター（DADS: 黒 4px アウトライン + 2px オフセット + 黄 2px シャドウ）。
+   focus-visible:focus-ring のように variant と組み合わせて使う。 */
+@utility focus-ring {
+  outline: 4px solid var(--color-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* テキストボタン・リンクなど背景を持たない要素のフォーカス（背景も黄色にする） */
+@utility focus-ring-fill {
+  outline: 4px solid var(--color-focus);
+  outline-offset: 2px;
+  background-color: var(--color-focus-ring);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* 44px 未満の小さなボタンで、上下に見えないタップ領域を広げて 44px を確保する（DADS ボタン sm / xs） */
+@utility tap-area {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    height: 2.75rem;
+  }
+}
+
+/* 横スクロールする表の右端に「続きがある」ことを示すシャドー（DADS テーブル: モバイル） */
+@utility scroll-shadow-x {
+  background:
+    linear-gradient(to right, var(--color-surface) 30%, transparent) left / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--color-surface) 30%, transparent) right / 2.5rem 100% no-repeat local,
+    linear-gradient(to right, var(--color-opacity-gray-200), transparent) left / 0.75rem 100% no-repeat scroll,
+    linear-gradient(to left, var(--color-opacity-gray-200), transparent) right / 0.75rem 100% no-repeat scroll;
+}
+
+/* リンク・テキストボタンの hover（下線 3px）。Tailwind の decoration-* に 3px がないため定義する */
+@utility underline-thick {
+  text-decoration-thickness: 3px;
+}
+
+/* ヘッダーの下に固定するサイドバーの高さ（画面の高さ - ヘッダー） */
+@utility h-below-header {
+  height: calc(100dvh - var(--spacing-header));
+}
+
+/* 等幅数字（表の数値列、KPI） */
+@utility nums {
+  font-variant-numeric: tabular-nums;
+}

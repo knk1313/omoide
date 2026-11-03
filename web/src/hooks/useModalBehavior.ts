@@ -24,11 +24,17 @@ type Options = {
     initialFocusRef?: RefObject<HTMLElement | null>;
     /** 開いている間 body のスクロールを止める。 */
     lockScroll?: boolean;
+    /**
+     * 開いている間、範囲の外側（祖先の兄弟要素）に inert を付けて操作と読み上げの対象から外す。
+     * ポータルで body 直下に描画するモーダルダイアログ・ドロワーで使う。
+     */
+    inertOutside?: boolean;
 };
 
-// モーダル系 UI（Modal / SideDrawer / MobileNav / ConfirmDialog）の共通の振る舞い。
-// 開いた直後のフォーカス、Esc で閉じる、Tab のフォーカストラップ、閉じた後のフォーカス復帰、背景スクロールの停止。
-export function useModalBehavior({ open = true, onClose, containerRef, initialFocusRef, lockScroll = true }: Options) {
+// モーダル系 UI（ModalDialog / Drawer / ConfirmDialog）の共通の振る舞い。
+// 開いた直後のフォーカス、Esc で閉じる、Tab のフォーカストラップ、閉じた後のフォーカス復帰、背景スクロールの停止、
+// 背景の inert 化。
+export function useModalBehavior({ open = true, onClose, containerRef, initialFocusRef, lockScroll = true, inertOutside = false }: Options) {
     // onClose は呼び出し側で毎レンダリング作られることがある。effect の依存に入れると
     // 再実行のたびにフォーカスが初期位置へ戻り、入力できなくなるため ref 経由で参照する。
     const onCloseRef = useRef(onClose);
@@ -43,11 +49,27 @@ export function useModalBehavior({ open = true, onClose, containerRef, initialFo
         const container = containerRef.current;
         const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
+        // 範囲から body までの各階層で兄弟要素を inert にする。すでに inert のもの（重ねて開いたダイアログが付けたもの）は触らない。
+        const inerted: Element[] = [];
+        if (inertOutside && container) {
+            let node: Element = container;
+            while (node !== document.body && node.parentElement) {
+                const parent: HTMLElement = node.parentElement;
+                for (const sibling of Array.from(parent.children)) {
+                    if (sibling === node || sibling.hasAttribute("inert") || sibling.tagName === "SCRIPT") continue;
+                    sibling.setAttribute("inert", "");
+                    inerted.push(sibling);
+                }
+                node = parent;
+            }
+        }
+
         (initialFocusRef?.current ?? container?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
 
         function onKey(e: KeyboardEvent) {
             if (stack[stack.length - 1] !== token) return;
             if (e.key === "Escape") {
+                e.preventDefault();
                 onCloseRef.current();
                 return;
             }
@@ -82,8 +104,9 @@ export function useModalBehavior({ open = true, onClose, containerRef, initialFo
             document.removeEventListener("keydown", onKey);
             stack.splice(stack.indexOf(token), 1);
             if (lockScroll) document.body.style.overflow = prevOverflow;
-            // 開く前にフォーカスしていた要素が残っていれば、そこへ戻す。
+            // inert を外してから（inert の要素はフォーカスできないため）、開く前にフォーカスしていた要素へ戻す。
+            for (const el of inerted) el.removeAttribute("inert");
             if (previouslyFocused?.isConnected) previouslyFocused.focus();
         };
-    }, [open, containerRef, initialFocusRef, lockScroll]);
+    }, [open, containerRef, initialFocusRef, lockScroll, inertOutside]);
 }

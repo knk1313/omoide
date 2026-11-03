@@ -16,7 +16,8 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "lint:tokens": "node scripts/check-design-tokens.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^9.39.5",
+    "@fontsource-variable/noto-sans-jp": "^5.3.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
