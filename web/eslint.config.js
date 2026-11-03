@@ -53,15 +53,6 @@ export default defineConfig([
         },
     },
     {
-        // 移行中の、まだテンプレートの部品に移していないファイル。移し終えたら外す（docs/migration-decisions.md M-03）。
-        files: [
-            "src/components/{BottomBar,Button,Card,Checkbox,ConfirmDialog,EmptyState,IconButton,Input,Modal,RequiredMark,Select,StatusBadge,StepPlaceholder,Textarea,Toast,Video}.tsx",
-            "src/pages/PreviewPage.tsx",
-            "src/pages/preview/**",
-        ],
-        rules: { "no-restricted-syntax": "off" },
-    },
-    {
         // トークンのコントラスト検査は 16 進の色コードを例として書く。
         files: ["src/tokens/**"],
         rules: { "no-restricted-syntax": "off" },

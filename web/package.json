@@ -11,13 +11,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-design-tokens.mjs",
     "typecheck": "tsc -b",
     "check": "npm run typecheck && npm run lint && npm run test",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium",
-    "lint:tokens": "node scripts/check-design-tokens.mjs"
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

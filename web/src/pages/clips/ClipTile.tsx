@@ -23,7 +23,7 @@ function ClipTile({ clip, onToggle, onPlay }: Props) {
     const name = `${clip.label}・クリップ ${clip.clip}`;
 
     return (
-        <li className={cn("flex min-w-0 flex-col rounded-8 bg-surface", clip.selected ? "ring-3 ring-primary" : "ring-1 ring-border-on-canvas")}>
+        <li className={cn("relative flex min-w-0 flex-col rounded-8 bg-surface", clip.selected ? "ring-3 ring-primary" : "ring-1 ring-border-on-canvas")}>
             <button
                 type="button"
                 aria-pressed={clip.selected}
@@ -55,12 +55,18 @@ function ClipTile({ clip, onToggle, onPlay }: Props) {
                         <Icon icon={Check} size="sm" />
                     </span>
                 </span>
-                {!clip.selected && (
-                    <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
-                        <span className="rounded-4 bg-surface px-2 text-16 leading-150 font-bold text-text-strong">除外</span>
-                    </span>
-                )}
             </button>
+            {/* 「除外」の札は、ボタンの外にサムネイルと同じ位置で重ねる（ボタンの中に置くと、見えている文字がボタンの名前と
+                食い違うと判定される）。タップはそのまま下のボタンに届く */}
+            {!clip.selected && (
+                <span
+                    aria-hidden="true"
+                    style={{ aspectRatio: `${clip.width} / ${clip.height}` }}
+                    className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center"
+                >
+                    <span className="rounded-4 bg-surface px-2 text-16 leading-150 font-bold text-text-strong">除外</span>
+                </span>
+            )}
             <div className="flex min-w-0 items-center justify-between gap-1 pl-2">
                 <span className="truncate text-14 leading-130 text-text">{clip.label}</span>
                 <span className="flex shrink-0 items-center">

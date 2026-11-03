@@ -1,3 +1,4 @@
+import { expectNoA11yViolations } from "@/test/axe";
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { fakeServer, loggedIn, notLoggedIn } from "@/test/fakeServer";
@@ -73,6 +74,15 @@ describe("パスワード画面", () => {
         expect(field).toHaveAttribute("type", "text");
         await user.click(screen.getByRole("button", { name: "パスワードを隠す" }));
         expect(field).toHaveAttribute("type", "password");
+    });
+
+    it("アクセシビリティ違反がない（エラーを出した状態も）", async () => {
+        fakeServer({ ...notLoggedIn, "POST /api/session/login": { status: 401, body: { detail: "パスワードが違います" } } });
+        const { user, container } = renderApp("/login");
+        await expectNoA11yViolations(await screen.findByRole("main"));
+        await user.type(await screen.findByLabelText("パスワード"), "x{Enter}");
+        await screen.findByRole("alert");
+        await expectNoA11yViolations(container);
     });
 
     it("ログイン済みならパスワード画面を飛ばす", async () => {

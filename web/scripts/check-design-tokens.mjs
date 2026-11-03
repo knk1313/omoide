@@ -6,6 +6,7 @@
 //   - 色コード: #rgb / #rrggbb / #rrggbbaa、rgb( / rgba( / hsl( / hsla( / oklch(
 //   - 任意値クラス: [#...]、[rgb(...)]、[13px] / [1.5rem] / [85vw] など単位付きの数値
 //   - Tailwind 既定の文字サイズ（text-xs / text-sm / text-base / text-lg / text-xl ...）
+// テンプレート（workspace-ui-template-dads）の scripts/check-design-tokens.mjs をもとにし、単位のない任意値の検出を足した。
 // `npm run lint` から呼ばれる。違反があれば 1 で終了する。
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -32,6 +33,11 @@ const RULES = [
     {
         name: "任意値クラス（単位付きの寸法）",
         pattern: /\[[^\]\s]*\d+(?:\.\d+)?(?:px|rem|em|vh|vw|dvh|svh|%|ms|s)\b[^\]]*\]/g,
+    },
+    {
+        // omoide での追加: 単位のない任意値（grid-cols-[1fr_2fr]、h-[1lh]、z-[60]）と任意プロパティ（[text-box:…]）も検出する
+        name: "任意値クラス（その他）",
+        pattern: /(?:^|[\s"'`:!])-?[a-z][a-z0-9-]*-\[[^\]\s]+\]|(?:^|[\s"'`])\[[a-z-]+:[^\]\s]+\]/g,
     },
     {
         name: "Tailwind 既定の文字サイズ（DADS のサイズ text-14 / text-16 ... か text-std-* を使う）",

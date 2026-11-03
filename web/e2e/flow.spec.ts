@@ -136,7 +136,8 @@ test("採用が 0 件なら、プレビューを作れない理由を表示す�
 test("保存に失敗したら、元に戻して知らせる", async ({ page }) => {
     await mockServer(page, { failOnce: { "PATCH /api/settings": [500, "保存できませんでした"] } });
     await page.goto("/settings");
-    await page.getByRole("radio", { name: /^2x/ }).check();
+    // 失敗するとすぐ元に戻るので、check() ではなく click() で選ぶ
+    await page.getByRole("radio", { name: /^2x/ }).click();
     await expect(page.getByRole("alert")).toContainText("保存できませんでした");
     await expect(page.getByRole("radio", { name: /^1x/ })).toBeChecked();
     await expectNoAxeViolations(page, "トースト");

@@ -10,7 +10,7 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     reporter: process.env.CI ? [["github"], ["list"]] : "list",
     use: {
-        baseURL: "http://localhost:4173",
+        baseURL: "http://localhost:4317",
         trace: "on-first-retry",
         locale: "ja-JP",
         timezoneId: "Asia/Tokyo",
@@ -21,9 +21,10 @@ export default defineConfig({
         { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     ],
     webServer: {
-        command: "npm run build && npm run preview -- --port 4173 --strictPort",
-        url: "http://localhost:4173",
-        reuseExistingServer: !process.env.CI,
+        command: "npm run build && npm run preview -- --port 4317 --strictPort",
+        url: "http://localhost:4317",
+        // 別のプロジェクトのプレビューを誤って使わないよう、毎回このプロジェクトをビルドして起動する
+        reuseExistingServer: false,
         timeout: 120000,
     },
 });

@@ -1,3 +1,4 @@
+import { expectNoA11yViolations } from "@/test/axe";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job, Project, Video } from "@/api/types";
@@ -143,6 +144,15 @@ describe("動画を取り込む画面", () => {
         vi.stubGlobal("XMLHttpRequest", OfflineXHR);
         chooseFile();
         expect(await screen.findByRole("heading", { name: "Mac につながりません" })).toBeInTheDocument();
+    });
+
+    it("アクセシビリティ違反がない（撮影日の入力を含む）", async () => {
+        const { container } = await openVideos({ "GET /api/jobs/analyze-1": { status: 200, body: analyzeJob("done", { result: newVideo }) } });
+        await expectNoA11yViolations(container);
+        fakeUpload(202, analyzeJob("queued"));
+        chooseFile();
+        await screen.findByLabelText("この動画を撮影した日");
+        await expectNoA11yViolations(container);
     });
 
     it("一覧から撮影日を直せる", async () => {

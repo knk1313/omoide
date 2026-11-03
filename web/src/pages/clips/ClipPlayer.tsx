@@ -11,10 +11,13 @@ export default function ClipPlayer({ clip, onClose }: { clip: PanelClip; onClose
             onClose={onClose}
             dismissOnBackdrop
             // 画面には「ユーザー1の再生」だけを出し、読み上げではクリップの番号も伝える
+            // （読み上げ用の文を 1 つの要素にまとめる。途中だけ sr-only にすると、ブラウザが前後に空白を入れて名前が変わる）
             title={
                 <>
-                    {clip.label}
-                    <span className="sr-only">・クリップ {clip.clip}</span>の再生
+                    <span aria-hidden="true">{clip.label}の再生</span>
+                    <span className="sr-only">
+                        {clip.label}・クリップ {clip.clip}の再生
+                    </span>
                 </>
             }
         >

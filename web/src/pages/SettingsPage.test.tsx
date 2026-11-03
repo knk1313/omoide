@@ -1,3 +1,4 @@
+import { expectNoA11yViolations } from "@/test/axe";
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Project } from "@/api/types";
@@ -70,6 +71,11 @@ describe("出力設定画面", () => {
         await openSettings({ "GET /api/project": { status: 200, body: { ...sampleProject, selected_count: 0, estimated_seconds: 0 } } });
         expect(screen.getByRole("button", { name: "プレビューを生成" })).toBeDisabled();
         expect(screen.getByRole("alert")).toHaveTextContent("クリップ選択に戻って選んでください");
+    });
+
+    it("アクセシビリティ違反がない", async () => {
+        const { container } = await openSettings();
+        await expectNoA11yViolations(container);
     });
 
     it("クリップ選択に戻れる", async () => {

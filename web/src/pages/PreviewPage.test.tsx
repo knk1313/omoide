@@ -1,3 +1,4 @@
+import { expectNoA11yViolations } from "@/test/axe";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Job } from "@/api/types";
@@ -176,6 +177,17 @@ describe("プレビュー・ダウンロード画面", () => {
         const video = await screen.findByLabelText("プレビュー動画");
         await waitFor(() => expect(video).toHaveAttribute("width", "1160"));
         expect(video).toHaveAttribute("height", "634");
+    });
+
+    it("アクセシビリティ違反がない（完成版を保存できる状態）", async () => {
+        const { container, user } = await openPreview({
+            "POST /api/preview": accepted(job("preview", "done", 1)),
+            "POST /api/export": accepted(job("export", "done", 1)),
+        });
+        await screen.findByLabelText("プレビュー動画");
+        await user.click(screen.getByRole("button", { name: "完成版を作る" }));
+        await screen.findByRole("link", { name: "保存する" });
+        await expectNoA11yViolations(container);
     });
 
     it("手順の表示は 4 番目", async () => {
