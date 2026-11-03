@@ -53,7 +53,10 @@ export default function LoginPage() {
             <div className="flex flex-col gap-2">
                 <h1 className="text-xl font-semibold text-ink">パスワードを入力</h1>
                 <p className="flex items-start gap-2 text-sm leading-relaxed text-muted">
-                    <Wifi className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                    {/* 1 行目の高さ (1lh) の箱の中央に置き、文字が折り返しても 1 行目とそろえる */}
+                    <span className="flex h-[1lh] shrink-0 items-center">
+                        <Wifi className="h-4 w-4 text-brand" aria-hidden />
+                    </span>
                     Mac と同じ Wi-Fi に接続してから、Mac で設定したパスワードを入力してください。
                 </p>
             </div>
