@@ -4,11 +4,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from .cache import load_or_scan
 from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
+from .network import HostError, port_available, resolve_host
 from .probe import VideoInfo
-from .cache import load_or_scan
 from .scan import VideoScan
 from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
 
@@ -36,11 +37,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     join.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
 
+    serve = sub.add_parser("serve", help="同じ Wi-Fi のスマホから操作するためのサーバーを起動する")
+    serve.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    serve.add_argument(
+        "--host", default=None,
+        help="待ち受けるアドレス。省略すると、この Mac の LAN のプライベートアドレスを使う",
+    )
+    serve.add_argument("--port", type=int, default=8080, help="待ち受けるポート (既定: 8080)")
+
     args = parser.parse_args(argv)
     if args.command == "scan":
         return scan_command(args.input, args.export)
     if args.command == "join":
         return join_command(args.input, args.select, args.speed, args.output)
+    if args.command == "serve":
+        return serve_command(args.input, args.host, args.port)
     return 1
 
 
@@ -98,6 +109,43 @@ def join_command(folder: Path, select: str | None, speed: float, output_dir: Pat
     join_segments(segments, speed, out_path)
     seconds = sum(s.clip.duration for s in segments) / speed
     print(f"書き出しました: {out_path}  (約 {seconds:.1f}s)")
+    return 0
+
+
+def serve_command(folder: Path, host: str | None, port: int) -> int:
+    # サーバーの依存は scan / join では使わないので、ここで読み込む
+    import uvicorn
+
+    from .server import WEB_DIST, create_app
+
+    try:
+        host = resolve_host(host)
+    except HostError as e:
+        return _fail(str(e))
+    if not port_available(host, port):
+        return _fail(f"ポート {port} は使用中です。--port で別の番号を指定してください。")
+
+    videos = _load_videos(folder)
+    if videos is None:
+        return 1
+    scans = []
+    for info in videos:
+        try:
+            scan = load_or_scan(info)
+        except ValueError as e:
+            return _fail(f"{info.path.name}: {e}")
+        ensure_thumbnails(scan)
+        scans.append(scan)
+    panels = sum(s.candidate_count for s in scans)
+    print(f"動画 {len(scans)} 本 / 中身のあるパネル {panels} 件を読み込みました。")
+
+    if not (WEB_DIST / "index.html").is_file():
+        print("画面がまだビルドされていません。`cd web && npm run build` を実行してください。", file=sys.stderr)
+
+    print(f"\nURL: http://{host}:{port}/")
+    # uvicorn が動き出すと戻らないので、案内を先に出し切る
+    print("同じ Wi-Fi に接続したスマホで開いてください。終了するには Ctrl+C を押してください。", flush=True)
+    uvicorn.run(create_app(scans), host=host, port=port, log_level="warning")
     return 0
 
 
