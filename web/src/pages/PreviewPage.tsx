@@ -1,8 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download } from "lucide-react";
 import { useNavigate } from "react-router";
-import type { Job } from "@/api/types";
-import Button from "@/components/Button";
+import { api } from "@/api/client";
+import type { Job, Project } from "@/api/types";
+import BottomBar, { PRIMARY_ACTION } from "@/components/BottomBar";
+import Button, { buttonClass } from "@/components/Button";
 import Card from "@/components/Card";
 import { useJob } from "./preview/useJob";
 
@@ -10,6 +12,7 @@ export default function PreviewPage() {
     const navigate = useNavigate();
     const preview = useJob("preview");
     const output = useJob("export");
+    const [frame, setFrame] = useState<Project["frame"]>(null);
 
     // 開いたらプレビューの生成を頼む。採用と速度が前回と同じなら、サーバーは作り終えたジョブをそのまま返す
     const requested = useRef(false);
@@ -18,7 +21,13 @@ export default function PreviewPage() {
         if (requested.current) return;
         requested.current = true;
         void startPreview();
+        // 再生枠を動画と同じ縦横比にするため、出力の大きさを取っておく（取れなくても再生はできる）
+        api.project().then((p) => setFrame(p.frame), () => undefined);
     }, [startPreview]);
+
+    const previewReady = preview.job?.status === "done";
+    const exporting = output.job !== null && (output.job.status === "queued" || output.job.status === "running");
+    const exportFailed = output.error !== null || output.job?.status === "failed";
 
     return (
         <div className="flex flex-1 flex-col gap-5 pt-1">
@@ -27,13 +36,16 @@ export default function PreviewPage() {
             <section aria-label="プレビュー" className="flex flex-col gap-3">
                 {preview.error ? (
                     <Failure message={preview.error} onRetry={() => void preview.start()} />
-                ) : preview.job?.status === "done" && preview.job.url ? (
+                ) : previewReady && preview.job?.url ? (
+                    // 再生枠を動画と同じ縦横比にし、上下や左右に黒い帯を出さない
                     <video
                         key={preview.job.url}
                         src={preview.job.url}
+                        width={frame?.width}
+                        height={frame?.height}
                         controls
                         playsInline
-                        className="aspect-video w-full rounded-surface bg-scrim"
+                        className="h-auto w-full rounded-surface bg-scrim"
                         aria-label="プレビュー動画"
                     />
                 ) : preview.job?.status === "failed" ? (
@@ -45,53 +57,44 @@ export default function PreviewPage() {
 
             <Card className="flex flex-col gap-3 p-4">
                 <h2 className="text-base font-semibold text-ink">完成版</h2>
-                {output.error ? (
-                    <Failure message={output.error} onRetry={() => void output.start()} />
-                ) : output.job?.status === "done" && output.job.url ? (
+                {exportFailed ? (
+                    <p role="alert" className="text-sm text-danger">
+                        {output.error ?? output.job?.error ?? "生成に失敗しました"}
+                    </p>
+                ) : output.job?.status === "done" ? (
                     <>
                         <p className="flex items-center gap-2 text-sm text-ink">
                             <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-ink" aria-hidden />
                             完成版ができました
                         </p>
-                        {/* 添付ファイルとして返るので、スマホでは保存に進む */}
-                        <a
-                            href={output.job.url}
-                            download
-                            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-base font-medium text-on-brand shadow-control hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                        >
-                            <Download className="h-5 w-5" aria-hidden />
-                            保存する
-                        </a>
                         <p className="text-xs leading-relaxed text-muted">
                             iPhone では「ファイル」アプリの「ダウンロード」に保存されます。写真に入れるときは、ファイルを開いて共有から「ビデオを保存」を選んでください。
                         </p>
                     </>
-                ) : output.job?.status === "failed" ? (
-                    <Failure message={output.job.error ?? "生成に失敗しました"} onRetry={() => void output.start()} />
-                ) : output.job ? (
+                ) : exporting ? (
                     <Progress label="完成版を作っています" job={output.job} />
                 ) : (
-                    <>
-                        <p className="text-sm leading-relaxed text-muted">プレビューで確かめたら、元の画質で完成版を作ります。</p>
-                        <Button
-                            className="h-12 w-full text-base"
-                            disabled={output.starting || preview.job?.status !== "done"}
-                            onClick={() => void output.start()}
-                        >
-                            {output.starting ? "生成を始めています…" : "完成版を作る"}
-                        </Button>
-                    </>
+                    <p className="text-sm leading-relaxed text-muted">プレビューで確かめたら、元の画質で完成版を作ります。</p>
                 )}
             </Card>
 
-            <div className="mt-auto grid grid-cols-2 gap-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <Button variant="secondary" className="h-12" onClick={() => navigate("/")}>
-                    選択に戻る
-                </Button>
-                <Button variant="secondary" className="h-12" onClick={() => navigate("/settings")}>
-                    速度を変える
-                </Button>
-            </div>
+            <BottomBar back={{ label: "速度を変える", onClick: () => navigate("/settings") }}>
+                {output.job?.status === "done" && output.job.url ? (
+                    // 添付ファイルとして返るので、スマホでは保存に進む
+                    <a href={output.job.url} download className={`${buttonClass()} ${PRIMARY_ACTION}`}>
+                        <Download className="h-5 w-5" aria-hidden />
+                        保存する
+                    </a>
+                ) : (
+                    <Button
+                        className={PRIMARY_ACTION}
+                        disabled={!previewReady || exporting || output.starting}
+                        onClick={() => void output.start()}
+                    >
+                        {exporting || output.starting ? "完成版を作っています…" : exportFailed ? "もう一度作る" : "完成版を作る"}
+                    </Button>
+                )}
+            </BottomBar>
         </div>
     );
 }

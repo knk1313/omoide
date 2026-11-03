@@ -43,7 +43,8 @@ export default function AppLayout() {
                             </ol>
                         )}
                     </header>
-                    <main className="flex flex-1 flex-col px-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+                    {/* 下の余白は各画面の BottomBar が安全領域ぶん取る。ここでも取ると、画面によって主な操作の高さがずれる */}
+                    <main className="flex flex-1 flex-col px-4">
                         <Outlet />
                     </main>
                 </div>

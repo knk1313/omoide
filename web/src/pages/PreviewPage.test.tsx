@@ -123,10 +123,32 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(await screen.findByRole("heading", { name: "共有の期限が切れました" })).toBeInTheDocument();
     });
 
-    it("選択に戻る・速度を変えるで前の画面へ移れる", async () => {
+    it("速度を変えるで前の画面へ移れる", async () => {
         const { user } = await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
         await user.click(screen.getByRole("button", { name: "速度を変える" }));
         expect(await screen.findByRole("heading", { name: "速度を選ぶ" })).toBeInTheDocument();
+    });
+
+    it("完成版の生成に失敗したら、理由を表示して作り直せる", async () => {
+        const { user } = await openPreview({
+            "POST /api/preview": accepted(job("preview", "done", 1)),
+            "POST /api/export": sequence(
+                accepted(job("export", "failed", 0.2, { error: "動画の生成に失敗しました。もう一度お試しください" })),
+                accepted(job("export", "done", 1)),
+            ),
+        });
+        await screen.findByLabelText("プレビュー動画");
+        await user.click(screen.getByRole("button", { name: "完成版を作る" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("動画の生成に失敗しました");
+        await user.click(screen.getByRole("button", { name: "もう一度作る" }));
+        expect(await screen.findByRole("link", { name: "保存する" })).toBeInTheDocument();
+    });
+
+    it("再生枠を動画と同じ縦横比にする", async () => {
+        await openPreview({ "POST /api/preview": accepted(job("preview", "done", 1)) });
+        const video = await screen.findByLabelText("プレビュー動画");
+        await waitFor(() => expect(video).toHaveAttribute("width", "1160"));
+        expect(video).toHaveAttribute("height", "634");
     });
 
     it("手順の表示は 3 番目", async () => {

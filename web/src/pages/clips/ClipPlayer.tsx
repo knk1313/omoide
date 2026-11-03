@@ -7,15 +7,18 @@ export default function ClipPlayer({ clip, onClose }: { clip: PanelClip; onClose
     return (
         <Modal onClose={onClose} label={`${name}の再生`}>
             <figure className="flex w-full max-w-md flex-col gap-2">
+                {/* 再生枠をパネルと同じ縦横比にし、上下や左右に黒い帯を出さない */}
                 <video
                     src={clip.video_url}
                     poster={clip.thumbnail_url}
+                    width={clip.width}
+                    height={clip.height}
                     controls
                     autoPlay
                     muted
                     loop
                     playsInline
-                    className="aspect-video w-full rounded-surface bg-scrim"
+                    className="h-auto w-full rounded-surface bg-scrim"
                 />
                 <figcaption className="text-center text-sm text-on-dark">{name}</figcaption>
             </figure>
