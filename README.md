@@ -5,6 +5,16 @@ Setlogの書き出し動画を、スマホで選んで1本にまとめるツー�
 - **Mac**：動画の保存・解析・変換・配信（Python、FFmpeg）
 - **スマホ**：クリップの選択とプレビュー（ブラウザ、React）
 
+![スマホの画面。左から、動画の取り込み、クリップの選択、プレビューの確認](docs/screenshots/overview.png)
+
+画面の写真は、E2Eテストのモックのデータで撮った。
+
+## 動作環境
+
+- macOS（Python 3.13、FFmpeg）
+- 画面をビルドするときだけNode.js 24
+- スマホはiPhoneのSafariかAndroidのChrome。Macと同じWi-Fiにつなぐ
+
 ## 使い方
 
 ```bash
