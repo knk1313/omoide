@@ -86,7 +86,13 @@ export default function PreviewPage() {
                                 label="ファイル名"
                                 id="file-name"
                                 requirement="required"
-                                supportText={`拡張子（.mp4）は自動で付きます。${FORBIDDEN_HINT}は使えません。`}
+                                supportText={
+                                    <>
+                                        拡張子（.mp4）は自動で付きます。
+                                        <br />
+                                        {FORBIDDEN_HINT}は使えません。
+                                    </>
+                                }
                                 errorText={fileNameError ?? undefined}
                             >
                                 <Input

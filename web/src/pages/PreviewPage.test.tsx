@@ -112,6 +112,8 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
         expect(save).toHaveAttribute("download", "9月の旅行.mp4");
         expect(screen.getByText("完成版ができました")).toBeInTheDocument();
+        // 補足は、拡張子と使えない文字の 2 文を、行を分けて出す
+        expect(screen.getByText(/拡張子（\.mp4）は自動で付きます。/).querySelector("br")).toBeInTheDocument();
     });
 
     it("ファイル名が空や使えない文字なら、保存に進まずに入力欄の下に理由を出す", async () => {
