@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { fileNamePlaceholder, fileNameProblem, MAX_FILE_NAME_LENGTH, stripExtension } from "@/lib/fileName";
 import { useJob } from "./preview/useJob";
@@ -63,7 +64,7 @@ export default function PreviewPage() {
                 ) : preview.job?.status === "failed" ? (
                     <Failure message={preview.job.error ?? "生成に失敗しました"} onRetry={() => void preview.start()} />
                 ) : (
-                    <Progress label="プレビューを作っています" job={preview.job} />
+                    <Progress label="プレビューを作っています" job={preview.job} avatar />
                 )}
             </section>
 
@@ -145,9 +146,11 @@ export default function PreviewPage() {
 /** 補足に書く、ファイル名に使えない文字。 */
 const FORBIDDEN_HINT = '/ \\ : * ? " < > |';
 
-function Progress({ label, job }: { label: string; job: Job | null }) {
+/** 生成の進み具合。プレビューは画面の主役なので、アバターを添える。完成版はカードの中なので、バーだけにする。 */
+function Progress({ label, job, avatar = false }: { label: string; job: Job | null; avatar?: boolean }) {
+    const Bar = avatar ? WaitingProgress : ProgressBar;
     return (
-        <WaitingProgress
+        <Bar
             label={job?.status === "queued" ? "順番を待っています" : label}
             accessibleLabel={label}
             value={job?.progress ?? 0}

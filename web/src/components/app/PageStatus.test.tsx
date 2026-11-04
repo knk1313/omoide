@@ -5,17 +5,24 @@ import { expectNoA11yViolations } from "@/test/axe";
 import { LoadFailure, Loading, WaitingProgress } from "./PageStatus";
 
 describe("PageStatus", () => {
-    it("読み込み中は、アバターを飾りとして出し、文言を読み上げる", async () => {
-        const { container } = render(<Loading label="確認しています" />);
-        expect(screen.getByRole("status")).toHaveTextContent("確認しています…");
-        expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+    it("読み込み中は、スピナーの読み上げと同じ文言を出す", () => {
+        render(<Loading label="確認しています" />);
+        expect(screen.getByRole("status")).toHaveTextContent("確認しています");
+        expect(screen.getByText("確認しています…")).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("avatar を付けると、スピナーの代わりにアバターを飾りとして出し、文言を読み上げる", async () => {
+        const { container } = render(<Loading avatar />);
+        expect(screen.getByRole("status")).toHaveTextContent("読み込んでいます…");
+        expect(container.querySelector(".animate-spin")).not.toBeInTheDocument();
+        expect(container.querySelector('div[aria-hidden="true"]')).toBeInTheDocument();
         await expectNoA11yViolations(container);
     });
 
     it("画面の全体を置き換えるときは、読み上げだけの見出しを置く", () => {
         render(<Loading label="確認しています" title="omoide" />);
         expect(screen.getByRole("heading", { level: 1, name: "omoide" })).toHaveClass("sr-only");
-        expect(screen.getByRole("status")).toHaveTextContent("確認しています…");
+        expect(screen.getByRole("status")).toHaveTextContent("確認しています");
     });
 
     it("進み具合には、アバターを添えて、バーで割合を伝える", async () => {

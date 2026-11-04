@@ -46,6 +46,8 @@ describe("プレビュー・ダウンロード画面", () => {
         const bar = await screen.findByRole("progressbar", { name: "プレビューを作っています" });
         await waitFor(() => expect(bar).toHaveAttribute("aria-valuenow", "40"));
         expect(screen.getByText("40%")).toBeInTheDocument();
+        // プレビューを作っている間は、考え中のアバターを添える
+        expect(document.querySelector(".size-avatar")).toBeInTheDocument();
         finished = true;
 
         const video = await screen.findByLabelText("プレビュー動画");
@@ -97,6 +99,8 @@ describe("プレビュー・ダウンロード画面", () => {
         await screen.findByLabelText("プレビュー動画");
         await user.click(screen.getByRole("button", { name: "完成版を作る" }));
         expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
+        // 完成版はカードの中なので、アバターは出さずにバーだけにする
+        expect(document.querySelector(".size-avatar")).not.toBeInTheDocument();
 
         const save = await screen.findByRole("link", { name: "保存する" });
         expect(save).toHaveAttribute("download");
