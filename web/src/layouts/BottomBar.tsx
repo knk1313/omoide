@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Button, type ButtonStyleProps } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type Props = {
     /** 前の画面へ戻るときの文言と動き。 */
@@ -19,21 +20,30 @@ export const PRIMARY_ACTION: ButtonStyleProps = { variant: "solid-fill", size: "
 // iPhone のホームバーに重ならないよう、安全領域の分だけ余白を取る。
 export default function BottomBar({ back, summary, children }: Props) {
     return (
-        <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col gap-2 border-t border-border bg-surface px-4 pt-2 pb-safe-3">
-            <div className="flex min-h-11 items-center justify-between gap-2">
-                {back ? (
-                    <Button variant="text" size="sm" leadIcon={ChevronLeft} className="-ml-1" onClick={back.onClick}>
-                        {back.label}
-                    </Button>
-                ) : (
-                    <span />
-                )}
-                {summary && (
-                    <p className="m-0 truncate text-right text-16 text-text-muted" aria-live="polite">
-                        {summary}
-                    </p>
-                )}
-            </div>
+        <div
+            className={cn(
+                "sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col gap-2 border-t border-border bg-surface px-4 pb-safe-3",
+                // 主な操作だけのときは、上下の余白をそろえる
+                back || summary ? "pt-2" : "pt-3",
+            )}
+        >
+            {/* 戻る操作も要約もない画面では、空の行を出さない（主な操作はどの画面でも一番下のまま） */}
+            {(back || summary) && (
+                <div className="flex min-h-11 items-center justify-between gap-2">
+                    {back ? (
+                        <Button variant="text" size="sm" leadIcon={ChevronLeft} className="-ml-1" onClick={back.onClick}>
+                            {back.label}
+                        </Button>
+                    ) : (
+                        <span />
+                    )}
+                    {summary && (
+                        <p className="m-0 truncate text-right text-16 text-text-muted" aria-live="polite">
+                            {summary}
+                        </p>
+                    )}
+                </div>
+            )}
             {children}
         </div>
     );
