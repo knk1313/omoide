@@ -35,6 +35,9 @@ jobs:
           - os: windows-latest
           - os: ubuntu-latest
     runs-on: ${{ matrix.os }}
+    env:
+      # ビルドのスクリプトが日本語を出力するので、Windows でも UTF-8 で書く（既定の cp1252 では書けない）
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
