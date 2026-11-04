@@ -3,6 +3,7 @@ import { CheckCircle2, Download } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api } from "@/api/client";
 import type { Job, Project } from "@/api/types";
+import { WaitingProgress } from "@/components/app/PageStatus";
 import VideoPlayer from "@/components/app/VideoPlayer";
 import { Button, ButtonAnchor } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -11,7 +12,6 @@ import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { fileNamePlaceholder, fileNameProblem, MAX_FILE_NAME_LENGTH, stripExtension } from "@/lib/fileName";
 import { useJob } from "./preview/useJob";
@@ -147,7 +147,7 @@ const FORBIDDEN_HINT = '/ \\ : * ? " < > |';
 
 function Progress({ label, job }: { label: string; job: Job | null }) {
     return (
-        <ProgressBar
+        <WaitingProgress
             label={job?.status === "queued" ? "順番を待っています" : label}
             accessibleLabel={label}
             value={job?.progress ?? 0}

@@ -3,7 +3,7 @@ import { Film, Trash2, Upload } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api, ApiError, uploadVideo } from "@/api/client";
 import type { Job, Project, Video } from "@/api/types";
-import { LoadFailure, Loading } from "@/components/app/PageStatus";
+import { LoadFailure, Loading, WaitingProgress } from "@/components/app/PageStatus";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -13,7 +13,6 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useToast } from "@/components/ui/Toast";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatDay } from "@/lib/format";
@@ -268,7 +267,7 @@ function UploadStatus({
         <Card padding="sm">
             <CardBody className="flex flex-col gap-2">
                 <p className="m-0 truncate font-bold text-text-strong">{upload.fileName}</p>
-                <ProgressBar
+                <WaitingProgress
                     label={sending ? "アップロードしています" : "動画を読み取っています"}
                     value={sending ? upload.sent : null}
                     description={sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}
