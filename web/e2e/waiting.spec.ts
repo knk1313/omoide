@@ -120,7 +120,7 @@ for (const scheme of ["light", "dark"] as const) {
             checkConsole();
         });
 
-        test("プレビューを作っている間は、進み具合の横にアバターを出す", async ({ page }) => {
+        test("プレビューを作っている間は、進み具合のバーの上にアバターを出す", async ({ page }) => {
             const checkConsole = failOnConsoleError(page);
             await mockServer(page, { jobSteps: 1000 });
             await page.goto("/preview");
@@ -130,16 +130,16 @@ for (const scheme of ["light", "dark"] as const) {
             await expect(progress).toBeVisible();
             await expect(avatars(page)).toHaveCount(1);
             await expectAvatarInTokenColor(avatars(page));
-            // アバターとバーを横に並べ、縦の中央をそろえる
-            const [a, p] = [await avatars(page).boundingBox(), await progress.locator("..").boundingBox()];
-            expect(a!.x + a!.width).toBeLessThanOrEqual(p!.x);
-            expect(Math.abs(a!.y + a!.height / 2 - (p!.y + p!.height / 2))).toBeLessThanOrEqual(1);
+            // アバターをバーの上に置き、横の中央をそろえる
+            const [a, p] = [await avatars(page).boundingBox(), await progress.boundingBox()];
+            expect(a!.y + a!.height).toBeLessThanOrEqual(p!.y);
+            expect(Math.abs(a!.x + a!.width / 2 - (p!.x + p!.width / 2))).toBeLessThanOrEqual(1);
             await expectNoHorizontalOverflow(page);
             await expectNoAxeViolations(page, `プレビューの生成中（${scheme}）`);
             checkConsole();
         });
 
-        test("動画を読み取っている間は、進み具合の横にアバターを出す", async ({ page }) => {
+        test("動画を読み取っている間は、進み具合のバーの上にアバターを出す", async ({ page }) => {
             const checkConsole = failOnConsoleError(page);
             await mockServer(page, { jobSteps: 1000 });
             await page.goto("/videos");
