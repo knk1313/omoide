@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="%APP_DESCRIPTION%" />
     <title>%APP_NAME%</title>
+    <script>
+      // 描画の前に配色を決め、ダークモードで画面が一瞬白く光らないようにする（src/context/ThemePreference.tsx と同じ判定）。
+      // テンプレート（workspace-ui-template-dads）の index.html と同じ。
+      (function () {
+        var saved = null;
+        try {
+          saved = localStorage.getItem("theme-preference");
+        } catch (e) {}
+        var dark = saved === "dark" || (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body class="min-h-dvh">
     <div id="root"></div>

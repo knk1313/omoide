@@ -2,8 +2,12 @@
 @import "@fontsource-variable/noto-sans-jp";
 @import "./tokens/primitives.css";
 @import "./tokens/theme.css";
+@import "./tokens/theme-dark.css";
 @import "./tokens/typography.css";
 @import "./tokens/app.css";
+
+/* dark: で、ダークモードのときだけ付ける色を書く（テンプレートの index.css と同じ） */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* 既定のテキスト設定（DADS Std-16N-170 相当）。前景色と背景色を必ずセットで指定する。
    ここから下はテンプレート（workspace-ui-template-dads）の src/index.css と同じ。 */
