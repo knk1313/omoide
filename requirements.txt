@@ -2,3 +2,5 @@ numpy>=2.0
 fastapi>=0.115
 uvicorn>=0.34
 qrcode>=8.0
+# Mac のアプリ（omoide.app）で、Dock とメニューの操作を受けるため（setlog_join/macapp.py）
+pyobjc-framework-Cocoa>=11; sys_platform == "darwin"

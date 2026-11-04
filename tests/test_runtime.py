@@ -24,6 +24,33 @@ class ToolTest(unittest.TestCase):
             self.assertEqual(runtime.tool("ffmpeg"), "ffmpeg")
 
 
+class AppBundleTest(unittest.TestCase):
+    """Mac のアプリ（omoide.app）として動いているときの、データと設定の置き場所。"""
+
+    def frozen(self, executable: str, platform: str = "darwin"):
+        for patcher in (
+            mock.patch.object(runtime, "FROZEN", True),
+            mock.patch.object(runtime.sys, "executable", executable),
+            mock.patch.object(runtime.sys, "platform", platform),
+            mock.patch.object(Path, "home", return_value=Path("/Users/someone")),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_app_keeps_data_and_settings_outside_the_bundle(self):
+        self.frozen("/Applications/omoide.app/Contents/MacOS/omoide")
+        self.assertEqual(runtime.app_bundle(), Path("/Applications/omoide.app"))
+        self.assertEqual(runtime.app_dir(), Path("/Applications"))
+        self.assertEqual(runtime.data_dir(), Path("/Users/someone/Movies/omoide"))
+        self.assertEqual(runtime.settings_dir(), Path("/Users/someone/Library/Application Support/omoide"))
+
+    def test_plain_folder_keeps_data_next_to_the_executable(self):
+        self.frozen("/Users/someone/Downloads/omoide/omoide", platform="linux")
+        self.assertIsNone(runtime.app_bundle())
+        self.assertEqual(runtime.data_dir(), Path("/Users/someone/Downloads/omoide"))
+        self.assertEqual(runtime.settings_dir(), Path("/Users/someone/Downloads/omoide"))
+
+
 class LaunchCommandTest(unittest.TestCase):
     def test_launch_command_opens_the_launcher_with_the_storage(self):
         with mock.patch("setlog_join.launcher.launch", return_value=0) as launch, mock.patch.object(cli, "_tools_available", return_value=True):
@@ -60,6 +87,28 @@ class FrozenMainTest(unittest.TestCase):
         with mock.patch.object(cli, "_run", return_value=1), mock.patch("builtins.input") as wait:
             self.assertEqual(cli.main([]), 1)
         wait.assert_called_once()
+
+    def test_app_bundle_reports_a_failure_in_a_dialog(self):
+        # .app にはターミナルの窓がないので、Enter を待たずにダイアログで知らせる
+        with (
+            mock.patch.object(runtime, "app_bundle", return_value=self.app / "omoide.app"),
+            mock.patch.object(cli, "_log_to_file") as log,
+            mock.patch.object(cli, "_run", side_effect=RuntimeError("ポートを開けません")),
+            mock.patch("setlog_join.macapp.alert") as alert,
+            mock.patch("builtins.input") as wait,
+            mock.patch("traceback.print_exc"),
+        ):
+            self.assertEqual(cli.main([]), 1)
+        title, message = alert.call_args.args
+        self.assertEqual(title, "omoideを起動できませんでした")
+        self.assertIn("ポートを開けません", message)
+        wait.assert_not_called()
+        log.assert_called_once_with(runtime.log_path())
+
+    def test_ignores_the_process_serial_number_from_old_finders(self):
+        with mock.patch.object(cli, "_run", return_value=0) as run, mock.patch("builtins.input"):
+            self.assertEqual(cli.main(["-psn_0_12345"]), 0)
+        run.assert_called_once_with(["launch"])
 
     def test_commands_with_arguments_do_not_wait(self):
         with mock.patch.object(cli, "clean_command", return_value=0) as clean, mock.patch("builtins.input") as wait:

@@ -2,6 +2,8 @@
 
 開発環境では、ffmpeg・ffprobe は PATH から探し、データ（input/・output/・.setlog-join/）は今のフォルダに置く。
 単体アプリでは、アプリに含めた ffmpeg・ffprobe を使い、データは実行ファイルと同じフォルダに置く。
+Mac のアプリ（omoide.app）では、.app の中を書き換えないよう、設定は ~/Library/Application Support/omoide に、
+データの既定は ~/Movies/omoide に置く（.app をアプリケーションのフォルダへ移しても、同じデータを使える）。
 """
 
 import subprocess
@@ -18,9 +20,41 @@ def bundle_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def app_bundle() -> Path | None:
+    """Mac のアプリ（omoide.app）として動いているときの、.app のフォルダ。それ以外は None。"""
+    if not (FROZEN and sys.platform == "darwin"):
+        return None
+    executable = Path(sys.executable).resolve()
+    # omoide.app/Contents/MacOS/omoide
+    bundle = executable.parent.parent.parent
+    return bundle if bundle.suffix == ".app" and executable.parent.name == "MacOS" else None
+
+
 def app_dir() -> Path:
-    """利用者のデータを置く場所。単体アプリでは実行ファイルと同じフォルダ（zip を展開したフォルダ）。"""
-    return Path(sys.executable).resolve().parent if FROZEN else Path.cwd()
+    """単体アプリを置いたフォルダ（zip を展開したフォルダ）。開発環境では今のフォルダ。"""
+    if not FROZEN:
+        return Path.cwd()
+    bundle = app_bundle()
+    return bundle.parent if bundle else Path(sys.executable).resolve().parent
+
+
+def settings_dir() -> Path:
+    """単体アプリの設定（保存先）を書くフォルダ。"""
+    if app_bundle():
+        return Path.home() / "Library" / "Application Support" / "omoide"
+    return app_dir()
+
+
+def log_path() -> Path:
+    """Mac のアプリ（.app）の出力を書くファイル。「コンソール」アプリの「ログレポート」からも見られる場所。"""
+    return Path.home() / "Library" / "Logs" / "omoide" / "omoide.log"
+
+
+def data_dir() -> Path:
+    """データ（input/・output/・.setlog-join/）を置く既定の場所。"""
+    if app_bundle():
+        return Path.home() / "Movies" / "omoide"
+    return app_dir()
 
 
 def tool(name: str) -> str:

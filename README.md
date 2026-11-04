@@ -19,12 +19,14 @@ Python・Node.js・FFmpegを入れなくても使える。
    - Mac（Apple Silicon）：`omoide-macos-arm64.zip`
    - Windows：`omoide-windows-x64.zip`
    - Linux：`omoide-linux-x64.zip`
-2. zipを展開し、`omoide`フォルダの`omoide`（Windowsは`omoide.exe`）をダブルクリックする
+2. zipを展開し、`omoide`フォルダの`omoide`（Macは`omoide.app`、Windowsは`omoide.exe`）をダブルクリックする
 3. ブラウザーで「omoideを始める」画面が開くので、スマホで入力するパスワードと共有の期限を決めて「共有を始める」を押す
 4. 表示されたQRコードを、同じWi-Fiにつないだスマホのカメラで読み取る
 5. 終わるときは、ブラウザーの画面の「omoideを終了する」を押す
 
-一緒に開くターミナル（Windowsはコマンドプロンプト）の窓は、閉じないでおく。閉じると、omoideも終わる。
+Macでは、ほかのアプリと同じように、Dockにアイコンが出る。Dockのアイコンを押すと「始める」画面を開き直し、Dockのメニューの「終了」やCmd+Qでも終われる。`omoide.app`は「アプリケーション」フォルダへ移して使ってもよい。
+
+WindowsとLinuxでは、一緒に開くコマンドプロンプト（Linuxはターミナル）の窓を閉じないでおく。閉じると、omoideも終わる。
 
 署名していないアプリなので、初めて開くときはOSが起動を止める。
 
@@ -36,7 +38,16 @@ Python・Node.js・FFmpegを入れなくても使える。
 
 - Windows：「WindowsによってPCが保護されました」と出たら、「詳細情報」→「実行」を押す。ファイアウォールの確認が出たら、プライベートネットワークを許可する
 
-取り込んだ動画と作った動画は、はじめは`omoide`フォルダの`input`・`output`に置かれる。保存先は、スマホの画面の「設定」（右上の歯車）で変えられる。変えると、次に起動したときに今のファイルを新しい場所へ移す。同じ画面の「すべてのデータを消す」で、保存先の動画・完成版・作業用ファイルをまとめて消せる。zipには、FFmpeg（GPL版）が含まれる。ライセンスと入手先は、zipの中の`THIRD_PARTY_NOTICES.txt`に書いた。
+取り込んだ動画と作った動画は、はじめは次の場所の`input`・`output`に置かれる。
+
+- Mac：「ムービー」フォルダの`omoide`（`~/Movies/omoide`）。`omoide.app`の中には置かない
+- Windows・Linux：`omoide`フォルダ
+
+保存先は、スマホの画面の「設定」（右上の歯車）で変えられる。変えると、次に起動したときに今のファイルを新しい場所へ移す。同じ画面の「すべてのデータを消す」で、保存先の動画・完成版・作業用ファイルをまとめて消せる。
+
+Macで起動できないときや、エラーの詳しい原因を知りたいときは、ログのファイル（`~/Library/Logs/omoide/omoide.log`）を見る。
+
+zipには、FFmpeg（GPL版）が含まれる。ライセンスと入手先は、zipの中の`THIRD_PARTY_NOTICES.txt`に書いた。
 
 ## 開発環境で動かす
 

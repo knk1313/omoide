@@ -152,3 +152,44 @@ class ContentsTest(AppModeTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AppBundleStorageTest(unittest.TestCase):
+    """Mac のアプリ（omoide.app）: 設定とデータを .app の外に置き、.app の中は保存先に選べない。"""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name).resolve()
+        self.bundle = self.root / "Applications" / "omoide.app"
+        (self.bundle / "Contents" / "Frameworks").mkdir(parents=True)
+        self.home = self.root / "home"
+        for patcher in (
+            mock.patch.object(runtime, "FROZEN", True),
+            mock.patch.object(runtime, "app_bundle", return_value=self.bundle),
+            mock.patch.object(runtime, "bundle_dir", return_value=self.bundle / "Contents" / "Frameworks"),
+            mock.patch.object(Path, "home", return_value=self.home),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_defaults_to_the_movies_folder(self):
+        self.assertEqual(storage.current(), default_storage(self.home / "Movies" / "omoide"))
+        self.assertEqual(storage.settings_path(), self.home / "Library" / "Application Support" / "omoide" / storage.SETTINGS_NAME)
+
+    def test_saves_settings_outside_the_bundle(self):
+        storage.save_pending(default_storage(self.home / "Documents" / "omoide"))
+        self.assertTrue(storage.settings_path().is_file())
+        self.assertEqual(storage.pending(), default_storage(self.home / "Documents" / "omoide"))
+        self.assertEqual(list(self.bundle.rglob("*.json")), [])
+
+    def test_presets_do_not_offer_the_app_folder(self):
+        self.assertNotIn("アプリのフォルダ", [p["label"] for p in storage.presets()])
+
+    def test_rejects_folders_inside_the_bundle(self):
+        inside = self.bundle / "Contents" / "Resources" / "data"
+        with self.assertRaisesRegex(StorageError, "omoide.app"):
+            storage.validate(
+                {"input": str(inside / "input"), "output": str(inside / "output"), "work": str(inside / "work")},
+                storage.current(),
+            )
