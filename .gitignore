@@ -8,3 +8,7 @@ input/*
 .setlog-join/
 output/*
 !output/.gitkeep
+
+# 単体アプリを作るときの中間物と成果物（packaging/build.py）
+packaging/build/
+packaging/dist/
