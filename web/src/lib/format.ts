@@ -13,6 +13,19 @@ export function formatDay(day: string): string {
     return dateFormatter.format(new Date(y, m - 1, d));
 }
 
+/** バイト数を「512B」「3.4MB」「1.2GB」の形にする（1024 進み）。 */
+export function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes}B`;
+    const units = ["KB", "MB", "GB", "TB"];
+    let value = bytes / 1024;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+    }
+    return `${value.toFixed(value < 10 ? 1 : 0)}${units[unit]}`;
+}
+
 /** 秒を「46秒」「1分23秒」の形にする。 */
 export function formatSeconds(seconds: number): string {
     const total = Math.round(seconds);

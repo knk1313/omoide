@@ -1,4 +1,4 @@
-import type { Job, JobKind, PanelClip, Project, Speed, Video } from "./types";
+import type { Job, JobKind, PanelClip, Project, Speed, StorageFolders, StorageStatus, Video } from "./types";
 
 /** API がエラーを返した。status で場面を見分け、detail をそのまま利用者に見せてよい。 */
 export class ApiError extends Error {
@@ -118,4 +118,10 @@ export const api = {
     startJob: (kind: Exclude<JobKind, "analyze">) => request<Job>("POST", kind === "preview" ? "/api/preview" : "/api/export"),
     job: (id: string) => request<Job>("GET", `/api/jobs/${encodeURIComponent(id)}`),
     clearTemporary: () => request<{ status: "ok" }>("DELETE", "/api/temporary"),
+    storage: () => request<StorageStatus>("GET", "/api/storage"),
+    /** 保存先を変える。すぐには移さず、次に起動したときに移す。 */
+    setStorage: (folders: StorageFolders) => request<StorageStatus>("PUT", "/api/storage", folders),
+    cancelStorageChange: () => request<StorageStatus>("DELETE", "/api/storage/pending"),
+    /** 取り込んだ動画・完成版・作業用ファイルをすべて消す。 */
+    clearData: () => request<Project>("DELETE", "/api/data"),
 };

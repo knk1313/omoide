@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { PanelClip, Project } from "@/api/types";
+import type { PanelClip, Project, StorageStatus } from "@/api/types";
 
 type Reply = { status: number; body?: unknown } | Error;
 type Handler = Reply | ((body: unknown) => Reply);
@@ -53,11 +53,24 @@ export const sampleProject: Project = {
     ],
 };
 
+/** 保存先（単体アプリとして動いていて、変えられる状態）。 */
+export const sampleStorage: StorageStatus = {
+    editable: true,
+    current: { input: "/Users/me/omoide/input", output: "/Users/me/omoide/output", work: "/Users/me/omoide/.setlog-join" },
+    pending: null,
+    presets: [
+        { label: "アプリのフォルダ", input: "/Users/me/omoide/input", output: "/Users/me/omoide/output", work: "/Users/me/omoide/.setlog-join" },
+        { label: "ムービー", input: "/Users/me/Movies/omoide/input", output: "/Users/me/Movies/omoide/output", work: "/Users/me/Movies/omoide/.setlog-join" },
+    ],
+    usage: { input: { count: 2, bytes: 30_000_000 }, output: { count: 1, bytes: 9_000_000 }, work: { count: 40, bytes: 5_000_000 } },
+};
+
 /** ログイン済みで、sampleProject と sampleClips を返すサーバー。 */
 export const loggedIn = {
     "GET /api/health": { status: 200, body: { status: "ok" } },
     "GET /api/project": { status: 200, body: sampleProject },
     "GET /api/clips": { status: 200, body: sampleClips },
+    "GET /api/storage": { status: 200, body: sampleStorage },
     "POST /api/preview": { status: 202, body: { id: "job-1", kind: "preview", status: "queued", progress: 0, error: null, url: null } },
 };
 export const notLoggedIn = { "GET /api/health": { status: 401, body: { detail: "ログインしてください" } } };
