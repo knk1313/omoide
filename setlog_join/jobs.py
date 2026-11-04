@@ -10,13 +10,13 @@ import shutil
 import sys
 import threading
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from .cache import load_or_scan
+from .cache import CACHE_DIR, load_or_scan
 from .join import FULL_QUALITY, PREVIEW_QUALITY, Segment, SelectionError, join_segments
 from .probe import probe
 from .scan import VideoScan
@@ -56,14 +56,14 @@ class AnalysisError(Exception):
 Analyzer = Callable[[Path], VideoScan]
 
 
-def analyze_video(path: Path) -> VideoScan:
+def analyze_video(path: Path, cache_dir: Path = CACHE_DIR) -> VideoScan:
     """取り込んだ動画を解析する。Setlog の書き出し動画でなければ AnalysisError。"""
     try:
         info = probe(path)
     except Exception as e:
         raise AnalysisError("動画として読み取れませんでした。MP4かMOVの動画を選んでください") from e
     try:
-        scan = load_or_scan(info)
+        scan = load_or_scan(info, cache_dir)
     except ValueError as e:
         # 3 段のカードが見つからない
         raise AnalysisError(
@@ -192,6 +192,22 @@ class JobManager:
         """プレビューか完成版を作っている途中か。"""
         with self._lock:
             return any(job.kind in ("preview", "export") and job.active for job in self._jobs.values())
+
+    def clear_data(self, paths: Sequence[Path]) -> None:
+        """取り込んだ動画・完成版・作業用ファイルを消し、動画のない状態に戻す（設定画面の「データを消す」）。
+
+        生成や解析の途中なら JobsBusy（作っている動画が、消したファイルを読みに行かないように）。
+        """
+        with self._lock:
+            if any(job.active for job in self._jobs.values()):
+                raise JobsBusy("プレビュー・完成版の作成や、動画の読み取りが終わってから、もう一度お試しください")
+            for path in paths:
+                if path.is_dir() and not path.is_symlink():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink(missing_ok=True)
+            self._jobs.clear()
+            self._workspace.reset()
 
     def get(self, job_id: str) -> Job:
         """存在しない ID なら KeyError。"""

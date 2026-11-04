@@ -14,8 +14,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import ClientDisconnect
 from starlette.types import Scope
 
+from . import storage as storage_settings
 from .auth import MAX_PASSWORD_LENGTH, LoginLocked, ShareAuth
 from .jobs import Analyzer, InsufficientSpace, JobManager, JobsBusy, NothingSelected, analyze_video
+from .storage import Storage, StorageError
 from .uploads import UploadError, save_upload, upload_path
 from .workspace import DateConflict, PanelEntry, Workspace
 
@@ -62,6 +64,13 @@ class BulkSelectionRequest(BaseModel):
     only: bool = False
 
 
+class StorageRequest(BaseModel):
+    # 保存先のフォルダ（フルパス。~ で始めてもよい）
+    input: str = Field(max_length=4096)
+    output: str = Field(max_length=4096)
+    work: str = Field(max_length=4096)
+
+
 class VideoDateRequest(BaseModel):
     # `2026-09-19` の形。null なら入力を消し、メタデータの日付に戻す
     date: str | None
@@ -73,8 +82,10 @@ class SettingsRequest(BaseModel):
 
 def create_app(
     workspace: Workspace, auth: ShareAuth, web_dir: Path = WEB_DIST, jobs: JobManager | None = None,
-    upload_dir: Path = Path("input"), analyze: Analyzer = analyze_video,
+    upload_dir: Path = Path("input"), analyze: Analyzer = analyze_video, storage: Storage | None = None,
 ) -> FastAPI:
+    # 今使っている保存先。渡されなければ、動画は upload_dir、ほかは今のフォルダの既定の場所とみなす
+    store = storage or Storage(input=upload_dir, output=Path("output"), work=Path(".setlog-join"))
     jobs = jobs or JobManager(workspace)
     # API の仕様書の画面は使わないので公開しない
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -225,6 +236,46 @@ def create_app(
             return jobs.get(job_id).to_json()
         except KeyError:
             raise HTTPException(status_code=404, detail="ジョブがありません") from None
+
+    def storage_status() -> dict:
+        upcoming = storage_settings.pending()
+        return {
+            "editable": storage_settings.editable(),
+            "current": store.to_json(),
+            "pending": upcoming.to_json() if upcoming else None,
+            "presets": storage_settings.presets() if storage_settings.editable() else [],
+            "usage": {key: storage_settings.usage(path) for key, path in store.folders().items()},
+        }
+
+    @app.get("/api/storage")
+    def get_storage() -> dict:
+        return storage_status()
+
+    @app.put("/api/storage")
+    def set_storage(body: StorageRequest) -> dict:
+        # 使っている最中のファイルは動かさず、次に起動したときに移す
+        if not storage_settings.editable():
+            raise HTTPException(status_code=409, detail="開発環境では、保存先を変えられません。起動したフォルダの input・output・.setlog-join を使います")
+        try:
+            target = storage_settings.validate(body.model_dump(), store)
+            storage_settings.save_pending(target)
+        except StorageError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        return storage_status()
+
+    @app.delete("/api/storage/pending")
+    def cancel_storage_change() -> dict:
+        storage_settings.cancel_pending()
+        return storage_status()
+
+    @app.delete("/api/data")
+    def clear_data() -> dict:
+        # 取り込んだ動画・完成版・作業用ファイルをすべて消し、動画のない状態に戻す（main.py clean と同じ対象）
+        try:
+            jobs.clear_data(storage_settings.contents(store))
+        except JobsBusy as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+        return workspace.summary()
 
     @app.delete("/api/temporary")
     def clear_temporary() -> dict:

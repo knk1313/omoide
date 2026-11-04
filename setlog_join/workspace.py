@@ -87,6 +87,12 @@ class Workspace:
             others = [s for s in self.scans if s.info.path.stem != scan.info.path.stem]
             self._arrange([*others, scan])
 
+    def reset(self) -> None:
+        """取り込んだ動画も選んだ内容もない状態に戻す（「データを消す」の後）。ファイルは呼び出し側が消す。"""
+        with self._project_lock, self._media_lock:
+            self.project = Project()
+            self._arrange([])
+
     def remove_video(self, name: str) -> None:
         """取り込んだ動画を消す。元の動画ファイル・サムネイル・パネル単体の動画と、その動画の除外と撮影日の記録も消す。
 
