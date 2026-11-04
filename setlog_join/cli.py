@@ -34,18 +34,41 @@ def _use_utf8_output() -> None:
             stream.reconfigure(encoding="utf-8", errors="replace")
 
 
+def _log_to_file(path: Path) -> None:
+    """出力（案内やエラーの詳細）を、ログのファイルに足していく。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    log = path.open("a", encoding="utf-8", buffering=1)
+    log.write(f"\n--- {datetime.now():%Y-%m-%d %H:%M:%S} 起動 ---\n")
+    sys.stdout = sys.stderr = log
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     _use_utf8_output()
     if not runtime.FROZEN:
         return _run(argv)
-    # 単体アプリ: データは展開したフォルダに置き、中の ffmpeg を使えるようにする
+    # 単体アプリ: 相対のパスはアプリを置いたフォルダから数え、中の ffmpeg を使えるようにする
     os.chdir(runtime.app_dir())
     runtime.allow_bundled_tools()
+    # 古い macOS は、Finder から開くと -psn_ で始まる引数を付ける
+    argv = [a for a in argv if not a.startswith("-psn_")]
     if argv:
         return _run(argv)
     # ダブルクリックで起動したときは、Mac のブラウザーで「始める」画面を開く。
+    if runtime.app_bundle():
+        # .app にはターミナルの窓がないので、出力はログのファイルに書き、起動できなかった理由はダイアログで知らせる
+        _log_to_file(runtime.log_path())
+        try:
+            return _run(["launch"])
+        except Exception as e:
+            import traceback
+
+            from . import macapp
+
+            traceback.print_exc()
+            macapp.alert("omoideを起動できませんでした", f"{e}\n\n詳しくは、ログのファイル（{runtime.log_path()}）に書きました。")
+            return 1
     # うまく起動できなかったときは、すぐに窓を閉じない（理由を読めるように）
     code = _run(["launch"])
     if code != 0:

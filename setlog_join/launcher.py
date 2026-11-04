@@ -22,6 +22,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 
+from . import runtime
 from .auth import MAX_PASSWORD_LENGTH
 from .server import WEB_DIST, _SinglePageFiles
 from .share import Share, ShareError, prepare
@@ -203,6 +204,20 @@ def launch(store: Storage, tools_available: Callable[[], bool], open_browser: bo
             webbrowser.open(url)
 
     threading.Thread(target=announce, name="omoide-announce", daemon=True).start()
+    if runtime.app_bundle():
+        # Mac のアプリ（.app）: メインのスレッドで Dock とメニューを受け、サーバーは別のスレッドで動かす
+        from . import macapp
+
+        def serve() -> None:
+            try:
+                server.run()
+            finally:
+                controller.stop()
+
+        thread = threading.Thread(target=serve, name="omoide-launcher", daemon=True)
+        thread.start()
+        macapp.run(url, thread, request_quit=quit_server)
+        return 0
     try:
         server.run()
     except KeyboardInterrupt:
