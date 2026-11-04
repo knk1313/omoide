@@ -2,19 +2,23 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoAxeViolations, expectNoHorizontalOverflow, waitForHeading, waitForLoaded } from "./helpers";
 import { mockServer } from "./mockServer";
 
-// 待っている間の表示（components/app/PageStatus.tsx の Loading と WaitingProgress）。どの画面でも、考え中のカメラのアバター
-// （open-bot-avatar）を出す。API の応答を止めて読み込み中のまま検査し、明るい配色と暗い配色の両方で、
-// アバターがトークンの色で描かれること、横にはみ出さないこと、axe の違反がないことを確かめる。
+// 待っている間の表示（components/app/PageStatus.tsx の Loading と WaitingProgress）。考え中のカメラのアバター（open-bot-avatar）は、
+// 待つ時間の長いところ（クリップの読み込み、動画の読み取り、プレビューの生成）だけに出し、ほかの読み込み中はスピナーのままにする。
+// API の応答を止めて読み込み中のまま検査し、明るい配色と暗い配色の両方で、アバターがトークンの色で描かれること、
+// 横にはみ出さないこと、axe の違反がないことを確かめる。
 
-/** 読み込み中の画面と、その画面が応答を待つ API。 */
-const LOADING: { name: string; path: string; waitsFor: string; text: string; loggedIn?: boolean }[] = [
-    { name: "ログインの確認", path: "/", waitsFor: "/api/health", text: "確認しています…" },
-    { name: "ログイン画面の確認", path: "/login", waitsFor: "/api/health", text: "確認しています…", loggedIn: false },
-    { name: "動画", path: "/videos", waitsFor: "/api/project", text: "読み込んでいます…" },
-    { name: "クリップ", path: "/", waitsFor: "/api/clips", text: "読み込んでいます…" },
-    { name: "速度", path: "/settings", waitsFor: "/api/project", text: "読み込んでいます…" },
-    { name: "設定", path: "/preferences", waitsFor: "/api/storage", text: "読み込んでいます…" },
+/** 読み込み中の画面と、その画面が応答を待つ API。avatar はアバターを出すかどうか（出さない画面はスピナー）。 */
+const LOADING: { name: string; path: string; waitsFor: string; text: string; avatar: boolean; loggedIn?: boolean }[] = [
+    { name: "ログインの確認", path: "/", waitsFor: "/api/health", text: "確認しています", avatar: false },
+    { name: "ログイン画面の確認", path: "/login", waitsFor: "/api/health", text: "確認しています", avatar: false, loggedIn: false },
+    { name: "動画", path: "/videos", waitsFor: "/api/project", text: "読み込んでいます", avatar: false },
+    { name: "クリップ", path: "/", waitsFor: "/api/clips", text: "読み込んでいます", avatar: true },
+    { name: "速度", path: "/settings", waitsFor: "/api/project", text: "読み込んでいます", avatar: false },
+    { name: "設定", path: "/preferences", waitsFor: "/api/storage", text: "読み込んでいます", avatar: false },
 ];
+
+/** スピナー（components/ui/Spinner.tsx）。 */
+const spinners = (page: Page) => page.locator("main .animate-spin");
 
 /** pattern に合う要求への応答を、返す関数を呼ぶまで止める。止めた後は、先に登録した page.route（モックの API）に渡す。 */
 async function hold(page: Page, pattern: string): Promise<() => void> {
@@ -74,7 +78,7 @@ for (const scheme of ["light", "dark"] as const) {
         test.use({ colorScheme: scheme });
 
         for (const screen of LOADING) {
-            test(`${screen.name}（${screen.path}）の読み込み中に、アバターを出す`, async ({ page }) => {
+            test(`${screen.name}（${screen.path}）の読み込み中に、${screen.avatar ? "アバター" : "スピナー"}を出す`, async ({ page }) => {
                 const checkConsole = failOnConsoleError(page);
                 await mockServer(page, { loggedIn: screen.loggedIn ?? true });
                 // ログインの確認を先に済ませ、目当ての API で止める（/api/health を止めるときは、それが最初に待つ要求になる）
@@ -83,8 +87,14 @@ for (const scheme of ["light", "dark"] as const) {
 
                 await expect(page.getByRole("status").filter({ hasText: screen.text })).toBeVisible();
                 await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
-                await expect(avatars(page)).toHaveCount(1);
-                await expectAvatarInTokenColor(avatars(page));
+                if (screen.avatar) {
+                    await expect(avatars(page)).toHaveCount(1);
+                    await expect(spinners(page)).toHaveCount(0);
+                    await expectAvatarInTokenColor(avatars(page));
+                } else {
+                    await expect(spinners(page)).toHaveCount(1);
+                    await expect(avatars(page)).toHaveCount(0);
+                }
                 await expectNoHorizontalOverflow(page);
                 await expectNoAxeViolations(page, `${screen.name}の読み込み中（${scheme}）`);
 
@@ -95,7 +105,7 @@ for (const scheme of ["light", "dark"] as const) {
             });
         }
 
-        test("始める画面（/launcher）の読み込み中に、アバターを出す", async ({ page }) => {
+        test("始める画面（/launcher）の読み込み中は、スピナーを出す", async ({ page }) => {
             const checkConsole = failOnConsoleError(page);
             let release!: () => void;
             const gate = new Promise<void>((resolve) => (release = resolve));
@@ -109,14 +119,15 @@ for (const scheme of ["light", "dark"] as const) {
             });
             await page.goto("/launcher");
 
-            await expect(page.getByRole("status").filter({ hasText: "読み込んでいます…" })).toBeVisible();
-            await expectAvatarInTokenColor(avatars(page));
+            await expect(page.getByRole("status").filter({ hasText: "読み込んでいます" })).toBeVisible();
+            await expect(spinners(page)).toHaveCount(1);
+            await expect(avatars(page)).toHaveCount(0);
             await expectNoHorizontalOverflow(page);
             await expectNoAxeViolations(page, `始める画面の読み込み中（${scheme}）`);
 
             release();
             await waitForHeading(page, "omoideを始める");
-            await expect(avatars(page)).toHaveCount(0);
+            await expect(spinners(page)).toHaveCount(0);
             checkConsole();
         });
 
