@@ -30,12 +30,12 @@ export function Loading({ label = "読み込んでいます", title }: { label?:
     );
 }
 
-/** 時間のかかる処理（動画の読み取り、プレビューや完成版の生成）の進み具合。アバターを横に添える。 */
-export function WaitingProgress({ className, ...props }: ProgressBarProps) {
+/** 時間のかかる処理（動画の読み取り、プレビューや完成版の生成）の進み具合。Loading と同じく、アバターを上の中央に出す。 */
+export function WaitingProgress({ className, ...props }: Omit<ProgressBarProps, "align">) {
     return (
-        <div className="flex items-center gap-4">
-            <BotAvatar className="size-avatar-sm" />
-            <ProgressBar {...props} className={cn("min-w-0 flex-1", className)} />
+        <div className="flex flex-col items-center gap-4 py-4">
+            <BotAvatar className="size-avatar" />
+            <ProgressBar {...props} align="center" className={cn("w-full", className)} />
         </div>
     );
 }
