@@ -262,12 +262,11 @@ function UploadStatus({
             />
         );
     }
-    // プレビューの画面と同じく、待っている間はカードに入れずに出す
+    // プレビューの画面と同じく、待っている間はカードに入れずに出す。ファイル名は文言に含め、割合と 1 行にまとめる
     const sending = upload.stage === "sending";
     return (
         <WaitingProgress
-            name={upload.fileName}
-            label={sending ? "アップロードしています" : "動画を読み取っています"}
+            label={`${upload.fileName}を${sending ? "アップロードしています" : "読み取っています"}`}
             value={sending ? upload.sent : null}
             description={sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}
         />

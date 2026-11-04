@@ -147,7 +147,7 @@ for (const scheme of ["light", "dark"] as const) {
             await waitForLoaded(page);
             await page.getByLabel("動画ファイル").setInputFiles({ name: "20261101.mov", mimeType: "video/quicktime", buffer: Buffer.from("x") });
 
-            await expect(page.getByRole("progressbar", { name: "動画を読み取っています" })).toBeVisible();
+            await expect(page.getByRole("progressbar", { name: "20261101.movを読み取っています" })).toBeVisible();
             await expect(avatars(page)).toHaveCount(1);
             await expectAvatarInTokenColor(avatars(page));
             await expectNoHorizontalOverflow(page);

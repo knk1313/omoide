@@ -97,11 +97,11 @@ describe("動画を取り込む画面", () => {
         const sent = fakeUpload(202, analyzeJob("queued"), { manual: true });
         const file = chooseFile();
 
-        expect(await screen.findByRole("progressbar", { name: "アップロードしています" })).toBeInTheDocument();
+        expect(await screen.findByRole("progressbar", { name: "11月.movをアップロードしています" })).toBeInTheDocument();
         expect(await screen.findByText("50%")).toBeInTheDocument();
         // 送り終えたことにして、解析の表示へ進める
         act(() => sent.finish());
-        expect(await screen.findByRole("progressbar", { name: "動画を読み取っています" })).toBeInTheDocument();
+        expect(await screen.findByRole("progressbar", { name: "11月.movを読み取っています" })).toBeInTheDocument();
         expect(sent.file).toBe(file);
         expect(sent.headers["X-File-Name"]).toBe(encodeURIComponent("11月.mov"));
         finished = true;
