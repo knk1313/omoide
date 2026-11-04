@@ -268,7 +268,7 @@ function UploadStatus({
         <WaitingProgress
             label={`${upload.fileName}を${sending ? "アップロードしています" : "読み取っています"}`}
             value={sending ? upload.sent : null}
-            description={sending ? "画面を閉じずにお待ちください。" : "動画を区切り、映っている人を探しています。"}
+            description={sending ? "画面を閉じずにお待ちください。" : "動画を区切っています。"}
         />
     );
 }
