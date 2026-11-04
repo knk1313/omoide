@@ -182,6 +182,23 @@ test("読み込み中に配色を切り替えると、アバターの色も変�
     release();
 });
 
+test("すぐ終わる読み込みでは、アバターを一瞬も出さない", async ({ page }) => {
+    // 読み込み中にアバターが一度でも描かれたら、印を付ける
+    await page.addInitScript(() => {
+        const w = window as unknown as { avatarSeen: boolean };
+        w.avatarSeen = false;
+        new MutationObserver(() => {
+            if (document.querySelector("[data-avatar-scene]")) w.avatarSeen = true;
+        }).observe(document, { childList: true, subtree: true });
+    });
+    await mockServer(page);
+    await page.goto("/");
+    await waitForHeading(page, "使うクリップを選ぶ");
+    await waitForLoaded(page);
+    await expect(page.getByRole("button", { name: /を再生$/ }).first()).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as { avatarSeen: boolean }).avatarSeen)).toBe(false);
+});
+
 test("視差効果を減らす設定でも、アバターを止めた形で出す", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await mockServer(page);
