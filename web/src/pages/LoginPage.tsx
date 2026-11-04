@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Wifi } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { api, ApiError } from "@/api/client";
+import { appConfig } from "@/app.config";
 import { Loading } from "@/components/app/PageStatus";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -26,7 +27,7 @@ export default function LoginPage() {
     const from = (location.state as { from?: string } | null)?.from ?? "/";
 
     if (status === "checking") {
-        return <Loading label="確認しています" />;
+        return <Loading label="確認しています" title={appConfig.name} />;
     }
     if (status === "ready") {
         return <Navigate to={from} replace />;

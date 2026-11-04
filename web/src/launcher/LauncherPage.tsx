@@ -64,7 +64,7 @@ export default function LauncherPage() {
             </div>
         );
     }
-    if (!status) return <Loading />;
+    if (!status) return <Loading title="omoideを始める" />;
     return status.state === "running" ? (
         <Sharing status={status} onChange={setStatus} onQuit={() => setQuitted(true)} />
     ) : (

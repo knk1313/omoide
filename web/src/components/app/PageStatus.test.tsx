@@ -12,6 +12,12 @@ describe("PageStatus", () => {
         await expectNoA11yViolations(container);
     });
 
+    it("画面の全体を置き換えるときは、見出しも出す", () => {
+        render(<Loading label="確認しています" title="omoide" />);
+        expect(screen.getByRole("heading", { level: 1, name: "omoide" })).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("確認しています…");
+    });
+
     it("進み具合には、アバターを添えて、バーで割合を伝える", async () => {
         const { container } = render(<WaitingProgress label="プレビューを作っています" value={0.5} />);
         expect(screen.getByRole("progressbar", { name: "プレビューを作っています" })).toHaveAttribute("aria-valuenow", "50");
