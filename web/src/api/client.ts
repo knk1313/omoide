@@ -1,4 +1,4 @@
-import type { Job, JobKind, PanelClip, Project, Speed, StorageFolders, StorageStatus, Video } from "./types";
+import type { Job, JobKind, LauncherStatus, PanelClip, Project, ShareExpiry, Speed, StorageFolders, StorageStatus, Video } from "./types";
 
 /** API がエラーを返した。status で場面を見分け、detail をそのまま利用者に見せてよい。 */
 export class ApiError extends Error {
@@ -124,4 +124,14 @@ export const api = {
     cancelStorageChange: () => request<StorageStatus>("DELETE", "/api/storage/pending"),
     /** 取り込んだ動画・完成版・作業用ファイルをすべて消す。 */
     clearData: () => request<Project>("DELETE", "/api/data"),
+};
+
+/** Mac のブラウザーの「始める」画面（launcher）の API。Mac の中だけで開く画面から使う。 */
+export const launcherApi = {
+    status: () => request<LauncherStatus>("GET", "/launcher/api/status"),
+    start: (password: string, expires: ShareExpiry) => request<LauncherStatus>("POST", "/launcher/api/start", { password, expires }),
+    stop: () => request<LauncherStatus>("POST", "/launcher/api/stop"),
+    quit: () => request<{ status: "ok" }>("POST", "/launcher/api/quit"),
+    /** 共有の URL の QR コード（SVG）。共有を始めるたびに変わるので、URL を付けて読み直させる。 */
+    qrUrl: (url: string) => `/launcher/api/qr.svg?for=${encodeURIComponent(url)}`,
 };
