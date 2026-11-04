@@ -67,7 +67,7 @@ omoideはスマホで4つの手順を順に進むアプリなので、管理画�
 | ログインの失敗は、入力欄の上のエラーのバナーで伝える | 入力欄が1つで、まとめとエラーテキストが同じ文言になるため |
 | `disabled`のボタンを残している（採用0件の「次へ」など） | 外すと入力の検査の振る舞いが変わるため。理由は近くの文言で示す |
 | `LoadError`の代わりに`components/app/PageStatus.tsx`の`LoadFailure`を使う | 読み込みの失敗を`role="alert"`ですぐ読み上げ、Macのserveを確かめる案内を添えるため |
-| 画面の読み込み中と、時間のかかる処理の進み具合（バーの上）に、テンプレートの`Spinner`ではなく、考え中のカメラのアバター（`components/app/BotAvatar.tsx`、[open-bot-avatar](https://github.com/DominikScholz/open-bot-avatar)）を出す。画面の全体が読み込み中のときは、見出し（h1）も出す | 待っている間を親しみやすくするため。アバターは飾りにし、状態は文言（`role="status"`）と進み具合のバーで伝える。色はトークンを実行時に読み、配色の切り替えに合わせる |
+| 画面の読み込み中と、時間のかかる処理の進み具合（バーの上）に、テンプレートの`Spinner`ではなく、考え中のカメラのアバター（`components/app/BotAvatar.tsx`、[open-bot-avatar](https://github.com/DominikScholz/open-bot-avatar)）を出す。画面の全体が読み込み中のときは、読み上げだけの見出し（h1）を置く | 待っている間を親しみやすくするため。アバターは飾りにし、状態は文言（`role="status"`）と進み具合のバーで伝える。色はトークンを実行時に読み、配色の切り替えに合わせる |
 | `useUnsavedChangesWarning`を取り込まない | react-routerの`useBlocker`はデータルーター（`createBrowserRouter`）が必要で、omoideは`BrowserRouter`を使うため。アップロード中の離脱は`beforeunload`で確認している |
 | 見た目の回帰テスト（スクリーンショットの比較）を取り込まない | Linuxのコンテナでの実行が前提で、omoideのE2Eは数値の検査（整列・フォーカス・はみ出し）とaxeで足りるため |
 
