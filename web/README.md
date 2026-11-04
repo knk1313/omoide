@@ -42,7 +42,7 @@ E2EはMac側のサーバーを使わず、`e2e/mockServer.ts`がAPIの代わり�
 
 ## UIのもと
 
-UIは、デジタル庁デザインシステム（DADS）準拠のテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)をもとにしている。取り込み元のコミットは`28286f9b8df793cacc30a2374220990f727ca366`（0.3.0）である。テンプレートの更新を取り込むときは、このコミットとの差分を見る。
+UIは、デジタル庁デザインシステム（DADS）準拠のテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)をもとにしている。取り込み元のコミットは`5aa88524aca123a3c0e2f8253fdf8e49e75fd039`（0.4.0、ダークモードまで）である。テンプレートの更新を取り込むときは、このコミットとの差分を見る。
 
 - トークン（`src/tokens/`）、UI部品（`src/components/ui/`）、検査スクリプト（`scripts/check-design-tokens.mjs`）は、テンプレートからコピーした。omoideが使う部品だけを取り込んでいる
 - E2Eの検査（`e2e/layout.ts`、`e2e/layout.spec.ts`、`e2e/a11y.spec.ts`）は、テンプレートのものをomoideの画面に合わせて使う。整列のずれ、フォーカスの隠れ、400%拡大、文字間隔、見出しの構造、強制カラーモードを確かめる
@@ -61,6 +61,7 @@ omoideはスマホで4つの手順を順に進むアプリなので、管理画�
 | フォーカスが隠れないよう、`index.css`で下部の帯の高さの分を空ける（`scroll-padding-bottom`） | テンプレートは固定ヘッダーの分を上に空けるが、omoideはヘッダーを固定せず、下部の帯を固定するため |
 | `Toast`をスマホでも画面の上に出し、エラーは1件ずつ`role="alert"`にする | 下部の帯と重ねず、エラーをすぐ読み上げるため |
 | `NotificationBanner`に`live="assertive"`（`role="alert"`）を足した | 操作の結果のエラーを、すぐ読み上げるため |
+| 配色（ライト・ダーク・スマホの設定に合わせる）は、手順とは別の設定画面（`/preferences`、ヘッダーの歯車）で選び、選んだらすぐに反映する | テンプレートは設定画面の「保存」で反映するが、omoideの設定画面は項目が少なく、スマホで1回のタップで切り替えられるほうが分かりやすいため。`/settings`は手順の「速度」で使っている |
 | `ProgressBar`を足した | テンプレートにない部品のため。DADSのプログレスインジケーターに従った |
 | 再生ボタンをサムネイルの下の行に置く（`pages/clips/ClipTile.tsx`） | 採用の切り替えと再生の当たり判定を重ねないため |
 | ログインの失敗は、入力欄の上のエラーのバナーで伝える | 入力欄が1つで、まとめとエラーテキストが同じ文言になるため |
