@@ -10,4 +10,5 @@ export const PAGES: PageRoute[] = [
     { name: "preview", path: "/preview", h1: "プレビューを確認" },
     { name: "login", path: "/login", h1: "パスワードを入力", loggedIn: false },
     { name: "not-found", path: "/no-such-page", h1: "ページが見つかりません" },
+    { name: "preferences", path: "/preferences", h1: "設定" },
 ];

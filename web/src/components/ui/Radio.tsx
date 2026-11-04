@@ -31,7 +31,7 @@ export function Radio({ children, size, invalid, className, disabled, ...props }
         <label className={cn("inline-flex w-fit items-start leading-130 tracking-0", s.label, s.gap, children ? s.pad : "", disabled ? "" : "cursor-pointer", className)}>
             {/* 外側の円はホバー時の背景（gray-420）。ラベル 1 行分の高さの枠で上下中央に置き、1 行目の中央に丸をそろえる。 */}
             <span className={cn("flex shrink-0 items-center", children && "h-lh")}>
-                <span className={cn("relative flex shrink-0 items-center justify-center rounded-full", s.box, !disabled && "hover:bg-solid-gray-420")}>
+                <span className={cn("relative flex shrink-0 items-center justify-center rounded-full", s.box, !disabled && "hover:bg-control-hover")}>
                     <input
                         type="radio"
                         disabled={disabled}

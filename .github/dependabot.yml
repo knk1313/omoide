@@ -12,12 +12,8 @@ updates:
         dependency-type: development
         update-types: [minor, patch]
     ignore:
-      # 次は大きな版上げを自動では出さない。周辺のパッケージ（typescript-eslint など）の対応を待って、手で上げる
+      # TypeScript の大きな版上げは、typescript-eslint が対応するまで自動では出さない
       - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
-      - dependency-name: eslint
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@eslint/js"
         update-types: ["version-update:semver-major"]
       # Node.js の版（.nvmrc の 24）に合わせる
       - dependency-name: "@types/node"

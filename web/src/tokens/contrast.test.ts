@@ -7,23 +7,30 @@ import { describe, expect, it } from "vitest";
 //   テキスト: 4.5:1 以上（DADS はサイズに関わらず 4.5:1 を要求する）
 //   非テキスト（枠線・アイコン・グラフの色面・フォーカス）: 3:1 以上
 // disabled 状態と chart-seq-4 / 5 は要件の対象外（docs/decisions.md D-12）。
+// ライト（theme.css）と、それを上書きするダーク（theme-dark.css）の両方を検査する。
 
 // Vite は new URL("./x", import.meta.url) をアセット参照に変換するため、パスは自前で組み立てる。
 const here = dirname(fileURLToPath(import.meta.url));
-const files = ["primitives.css", "theme.css"].map((f) => readFileSync(join(here, f), "utf8"));
+const read = (f: string) => readFileSync(join(here, f), "utf8");
 
-// --name: value; を集める（@theme の中だけ）。
-const raw = new Map<string, string>();
-for (const css of files) {
-    for (const m of css.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gim)) raw.set(m[1], m[2].trim());
+// --name: value; を集める。
+function collect(files: string[], base = new Map<string, string>()): Map<string, string> {
+    const map = new Map(base);
+    for (const css of files.map(read)) {
+        for (const m of css.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gim)) map.set(m[1], m[2].trim());
+    }
+    return map;
 }
 
-function resolve(name: string, depth = 0): string {
+const LIGHT = collect(["primitives.css", "theme.css"]);
+const DARK = collect(["theme-dark.css"], LIGHT);
+
+function resolveIn(raw: Map<string, string>, name: string, depth = 0): string {
     const v = raw.get(name);
     if (!v) throw new Error(`トークンが見つかりません: ${name}`);
     if (depth > 10) throw new Error(`参照が深すぎます: ${name}`);
     const ref = v.match(/^var\((--[a-z0-9-]+)\)$/);
-    return ref ? resolve(ref[1], depth + 1) : v;
+    return ref ? resolveIn(raw, ref[1], depth + 1) : v;
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -106,9 +113,12 @@ const TEXT_PAIRS: Pair[] = [
     ["text-inverse", "neutral"],
     ["trend-up", "surface"],
     ["trend-down", "surface"],
-    ["text", "focus-ring"], // 黄色のフォーカス背景上の文字（テキストボタン・リンク）
-    ["link", "focus-ring"],
-    ["primary", "focus-ring"],
+    ["text-secondary", "surface"],
+    ["text-inverse", "text-strong"], // ツールチップ
+    ["text-inverse", "text-subtle"], // 入力欄のラベルの「必須」
+    ["text", "focus-fill"], // 黄色のフォーカスの塗りの上の文字（テキストボタン・リンク）。ダークでは塗らない
+    ["link", "focus-fill"],
+    ["primary", "focus-fill"],
 ];
 
 // 非テキスト（3:1）
@@ -153,19 +163,51 @@ const NON_TEXT_PAIRS: Pair[] = [
     ["surface-highlight", "canvas"],
 ];
 
-describe("デザイントークンのコントラスト（WCAG 2.2 AA）", () => {
-    it.each(TEXT_PAIRS)("テキスト %s / 背景 %s は 4.5:1 以上", (fg, bg) => {
+describe.each([
+    ["ライト", LIGHT],
+    ["ダーク", DARK],
+] as const)("デザイントークンのコントラスト（WCAG 2.2 AA）：%s", (_, raw) => {
+    const resolve = (name: string) => resolveIn(raw, name);
+    // 透明（ダークのフォーカスの塗りなど）は塗らないので、組み合わせの対象外にする。
+    const applicable = (pairs: Pair[]) => pairs.filter(([fg, bg]) => ![fg, bg].some((t) => resolve(`--color-${t}`) === "transparent"));
+
+    it.each(applicable(TEXT_PAIRS))("テキスト %s / 背景 %s は 4.5:1 以上", (fg, bg) => {
         const ratio = contrast(resolve(`--color-${fg}`), resolve(`--color-${bg}`));
         expect(ratio, `${fg} (${resolve(`--color-${fg}`)}) on ${bg} (${resolve(`--color-${bg}`)}) = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
     });
 
-    it.each(NON_TEXT_PAIRS)("非テキスト %s / 背景 %s は 3:1 以上", (fg, bg) => {
+    it.each(applicable(NON_TEXT_PAIRS))("非テキスト %s / 背景 %s は 3:1 以上", (fg, bg) => {
         const ratio = contrast(resolve(`--color-${fg}`), resolve(`--color-${bg}`));
         expect(ratio, `${fg} (${resolve(`--color-${fg}`)}) on ${bg} (${resolve(`--color-${bg}`)}) = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
     });
+});
+
+describe("デザイントークンの基準値", () => {
 
     it("DADS の基準値どおり、Gray-420 は白に対して 3:1、Gray-536 は 4.5:1 を満たす", () => {
         expect(contrast("#949494", "#ffffff")).toBeGreaterThanOrEqual(3);
         expect(contrast("#767676", "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    });
+});
+
+// チップラベルのダークモードの色（ChipLabel.tsx の dark:）。DADS に規定がないため、独自に選んだ段がコントラストを満たすかを確かめる。
+describe("チップラベルのダークモードの色", () => {
+    const HUES = ["blue", "light-blue", "cyan", "green", "lime", "yellow", "orange", "red", "magenta", "purple"].map((h) => [h, h] as const);
+    const ALL = [...HUES, ["gray", "solid-gray"] as const];
+    const step = (hue: string, light: string, gray: string) => (hue === "solid-gray" ? gray : light);
+    const c = (name: string) => resolveIn(DARK, `--color-${name}`);
+    const surface = c("surface");
+
+    it.each(ALL)("%s：文字（text・outlined）は面に対して 4.5:1 以上", (_, hue) => {
+        expect(contrast(c(`${hue}-${step(hue, "300", "200")}`), surface)).toBeGreaterThanOrEqual(4.5);
+    });
+    it.each(ALL)("%s：枠線は面に対して 3:1 以上", (_, hue) => {
+        expect(contrast(c(`${hue}-${step(hue, "400", "420")}`), surface)).toBeGreaterThanOrEqual(3);
+    });
+    it.each(ALL)("%s：filled-1 の文字は薄い面に対して 4.5:1 以上", (_, hue) => {
+        expect(contrast(c(`${hue}-${step(hue, "200", "100")}`), c(`${hue}-${step(hue, "1200", "800")}`))).toBeGreaterThanOrEqual(4.5);
+    });
+    it.each(ALL)("%s：filled-2 の黒い文字は塗りに対して 4.5:1 以上", (_, hue) => {
+        expect(contrast(c("text-inverse"), c(`${hue}-300`))).toBeGreaterThanOrEqual(4.5);
     });
 });

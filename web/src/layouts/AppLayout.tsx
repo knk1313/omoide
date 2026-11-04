@@ -1,6 +1,8 @@
-import { Outlet, useLocation } from "react-router";
+import { Settings } from "lucide-react";
+import { Link, Outlet, useLocation } from "react-router";
 import { appConfig, steps } from "@/app.config";
 import { ConfirmProvider } from "@/components/ui/ConfirmDialog";
+import { Icon } from "@/components/ui/Icon";
 import { StepNavigation } from "@/components/ui/StepNavigation";
 import { ToastProvider } from "@/components/ui/Toast";
 import { useSession } from "@/session/Session";
@@ -21,8 +23,19 @@ export default function AppLayout() {
                 <div className="flex min-h-dvh flex-col">
                     {/* iPhone のノッチに中身が隠れないよう、ヘッダーの上に安全領域の分だけ余白を取る */}
                     <ShellHeader className="box-content pt-safe">
-                        <div className="mx-auto flex w-full max-w-app items-center px-2">
+                        <div className="mx-auto flex w-full max-w-app items-center justify-between gap-2 px-2">
                             <Brand name={appConfig.name} logo={appConfig.logo} />
+                            {/* 設定（配色など）。ログインした後にだけ出す。見た目はテンプレートの IconButton（ghost）と同じ */}
+                            {status === "ready" && (
+                                <Link
+                                    to="/preferences"
+                                    aria-label="設定"
+                                    aria-current={pathname === "/preferences" ? "page" : undefined}
+                                    className="inline-flex size-target shrink-0 items-center justify-center rounded-8 text-text transition-colors hover:bg-surface-muted hover:text-text-strong focus-visible:focus-ring-fill"
+                                >
+                                    <Icon icon={Settings} size="lg" />
+                                </Link>
+                            )}
                         </div>
                     </ShellHeader>
                     {/* 下の余白は各画面の BottomBar が安全領域ぶん取る。ここでも取ると、画面によって主な操作の高さがずれる */}
