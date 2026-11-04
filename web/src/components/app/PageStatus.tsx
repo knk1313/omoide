@@ -30,11 +30,15 @@ export function Loading({ label = "読み込んでいます", title }: { label?:
     );
 }
 
-/** 時間のかかる処理（動画の読み取り、プレビューや完成版の生成）の進み具合。Loading と同じく、アバターを上の中央に出す。 */
-export function WaitingProgress({ className, ...props }: Omit<ProgressBarProps, "align">) {
+/**
+ * 時間のかかる処理（動画の読み取り、プレビューや完成版の生成）の進み具合。Loading と同じく、アバターを上の中央に出す。
+ * name（取り込んでいる動画のファイル名など）を渡すと、アバターとバーの間に太字で出す。
+ */
+export function WaitingProgress({ name, className, ...props }: Omit<ProgressBarProps, "align"> & { name?: string }) {
     return (
         <div className="flex flex-col items-center gap-4 py-4">
             <BotAvatar className="size-avatar" />
+            {name && <p className="m-0 w-full truncate text-center font-bold text-text-strong">{name}</p>}
             <ProgressBar {...props} align="center" className={cn("w-full", className)} />
         </div>
     );

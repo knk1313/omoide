@@ -25,6 +25,11 @@ describe("PageStatus", () => {
         await expectNoA11yViolations(container);
     });
 
+    it("進み具合には、取り込んでいるファイルの名前も出せる", () => {
+        render(<WaitingProgress name="20261101.mov" label="動画を読み取っています" value={null} />);
+        expect(screen.getByText("20261101.mov")).toHaveClass("truncate", "text-center");
+    });
+
     it("読み込めなければ、理由をすぐ読み上げ、もう一度読み込める", async () => {
         const retry = vi.fn();
         const { container } = render(<LoadFailure message="読み込めませんでした" onRetry={retry} />);

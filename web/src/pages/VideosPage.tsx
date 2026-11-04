@@ -262,18 +262,15 @@ function UploadStatus({
             />
         );
     }
+    // プレビューの画面と同じく、待っている間はカードに入れずに出す
     const sending = upload.stage === "sending";
     return (
-        <Card padding="sm">
-            <CardBody className="flex flex-col gap-2">
-                <p className="m-0 truncate font-bold text-text-strong">{upload.fileName}</p>
-                <WaitingProgress
-                    label={sending ? "アップロードしています" : "動画を読み取っています"}
-                    value={sending ? upload.sent : null}
-                    description={sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}
-                />
-            </CardBody>
-        </Card>
+        <WaitingProgress
+            name={upload.fileName}
+            label={sending ? "アップロードしています" : "動画を読み取っています"}
+            value={sending ? upload.sent : null}
+            description={sending ? "画面を閉じずにお待ちください。" : "クリップの区切りと、中身のある人を調べています。"}
+        />
     );
 }
 
