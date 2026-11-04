@@ -4,9 +4,11 @@ import subprocess
 
 import numpy as np
 
+from .runtime import tool
+
 
 def run(*args: str) -> bytes:
-    result = subprocess.run(["ffmpeg", "-v", "error", *args], capture_output=True, check=True)
+    result = subprocess.run([tool("ffmpeg"), "-v", "error", *args], capture_output=True, check=True)
     return result.stdout
 
 

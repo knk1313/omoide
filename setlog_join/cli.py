@@ -1,11 +1,13 @@
 import argparse
 import getpass
+import os
 import shutil
 import sys
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from . import runtime
 from .auth import MAX_PASSWORD_LENGTH, ShareAuth, parse_duration
 from .cache import load_or_scan
 from .clean import WORK_DIR, clean_targets, format_size, remove
@@ -23,7 +25,26 @@ MIN_PASSWORD_LENGTH = 4
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="setlog-join")
+    if argv is None:
+        argv = sys.argv[1:]
+    if not runtime.FROZEN:
+        return _run(argv)
+    # 単体アプリ: データは展開したフォルダに置き、中の ffmpeg を使えるようにする
+    os.chdir(runtime.app_dir())
+    runtime.allow_bundled_tools()
+    if argv:
+        return _run(argv)
+    # ダブルクリックで起動したときは serve を動かし、終わってもすぐに窓を閉じない（理由やエラーを読めるように）
+    code = _run(["serve"])
+    try:
+        input("\nEnter キーを押すと閉じます。")
+    except (EOFError, KeyboardInterrupt):
+        pass
+    return code
+
+
+def _run(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="omoide")
     sub = parser.add_subparsers(dest="command", required=True)
 
     scan = sub.add_parser("scan", help="入力動画をクリップと 3 人分のパネルに分割して一覧を表示する")
@@ -269,9 +290,12 @@ def _print_qr(url: str) -> None:
 
 
 def _tools_available() -> bool:
-    for tool in ("ffmpeg", "ffprobe"):
-        if shutil.which(tool) is None:
-            _fail(f"{tool} が見つかりません。`brew install ffmpeg` でインストールしてください。")
+    for name in ("ffmpeg", "ffprobe"):
+        if shutil.which(runtime.tool(name)) is None:
+            if runtime.FROZEN:
+                _fail(f"アプリの中の {name} が見つかりません。ダウンロードした zip を展開し直してください。")
+            else:
+                _fail(f"{name} が見つかりません。`brew install ffmpeg` でインストールしてください。")
             return False
     return True
 

@@ -1,0 +1,3 @@
+-r requirements.txt
+# 単体アプリを作るときだけ使う（packaging/build.py）
+pyinstaller==6.22.3

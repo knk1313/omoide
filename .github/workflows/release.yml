@@ -1,0 +1,81 @@
+name: Release
+
+# 単体アプリ（OS ごとの zip）を作る。
+# - v で始まるタグを push すると、3 つの OS で作って確かめ、GitHub Releases に置く
+# - 配布物に関わるファイルを変えた PR と、手動での実行（workflow_dispatch）では、作って確かめるところまで行い、
+#   zip は実行結果の成果物として残す
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "packaging/**"
+      - "requirements.txt"
+      - "requirements-build.txt"
+      - "setlog_join/runtime.py"
+      - "setlog_join/cli.py"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+# PR に続けて push したときは、前の実行を止める
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest # Apple Silicon
+          - os: windows-latest
+          - os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      # ビルドのスクリプトが日本語を出力するので、Windows でも UTF-8 で書く（既定の cp1252 では書けない）
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+      - name: 画面をビルドする
+        working-directory: web
+        run: |
+          npm ci
+          npx vite build
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements-build.txt
+      - name: ffmpeg を取得する（GPL 版、配布元のハッシュ値で確かめる）
+        run: python packaging/fetch_ffmpeg.py
+      - name: 単体アプリを作る
+        run: python packaging/build.py
+      - name: 作ったアプリが動くか確かめる
+        run: python packaging/smoke_test.py packaging/dist/omoide
+      - uses: actions/upload-artifact@v7
+        with:
+          name: omoide-${{ matrix.os }}
+          path: packaging/dist/omoide-*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: GitHub Releases に置く
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

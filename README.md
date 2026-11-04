@@ -11,13 +11,32 @@ Setlogの書き出し動画を、スマホで選んで1本にまとめるツー�
 | --- | --- | --- | --- |
 | ![動画を取り込む画面](docs/screenshots/videos.png) | ![使うクリップを選ぶ画面](docs/screenshots/clips.png) | ![速度を選ぶ画面](docs/screenshots/settings.png) | ![プレビューを確認する画面](docs/screenshots/preview.png) |
 
-## 動作環境
+## ダウンロードして使う
+
+Python・Node.js・FFmpegを入れなくても使える。
+
+1. [Releases](https://github.com/knk1313/omoide/releases)から、自分のOSのzipをダウンロードする
+   - Mac（Apple Silicon）：`omoide-macos-arm64.zip`
+   - Windows：`omoide-windows-x64.zip`
+   - Linux：`omoide-linux-x64.zip`
+2. zipを展開し、`omoide`フォルダの`omoide`（Windowsは`omoide.exe`）をダブルクリックする
+3. 開いた窓で、スマホで入力するパスワードを決める
+4. 表示されたQRコードを、同じWi-Fiにつないだスマホのカメラで読み取る
+
+署名していないアプリなので、初めて開くときはOSが起動を止める。
+
+- Mac：「システム設定」→「プライバシーとセキュリティ」の下の方にある「このまま開く」を押し、もう一度「開く」を押す
+- Windows：「WindowsによってPCが保護されました」と出たら、「詳細情報」→「実行」を押す。ファイアウォールの確認が出たら、プライベートネットワークを許可する
+
+取り込んだ動画と作った動画は、`omoide`フォルダの`input`・`output`に置かれる。zipには、FFmpeg（GPL版）が含まれる。ライセンスと入手先は、zipの中の`THIRD_PARTY_NOTICES.txt`に書いた。
+
+## 開発環境で動かす
 
 - macOS（Python 3.13、FFmpeg）
 - 画面をビルドするときだけNode.js 24
 - スマホはiPhoneのSafariかAndroidのChrome。Macと同じWi-Fiにつなぐ
 
-## 使い方
+### 使い方
 
 ```bash
 # 初回のみ (FFmpeg が必要: brew install ffmpeg)
@@ -76,6 +95,18 @@ python3 -m venv .venv
 ```bash
 # Python のテスト
 .venv/bin/python -m unittest discover -s tests
+```
+
+### 単体アプリを作る
+
+`v`で始まるタグをpushすると、GitHub Actionsが単体アプリを作る。Mac・Windows・Linuxの3つを作り、Releasesに置く（`.github/workflows/release.yml`）。手元のMacで作るときは、次のとおりにする。
+
+```bash
+.venv/bin/pip install -r requirements-build.txt
+(cd web && npm ci && npm run build)
+.venv/bin/python packaging/fetch_ffmpeg.py   # 配る ffmpeg を取得する（手元で試すだけなら --local で PATH の ffmpeg を使う）
+.venv/bin/python packaging/build.py          # packaging/dist/omoide-macos-arm64.zip ができる
+.venv/bin/python packaging/smoke_test.py packaging/dist/omoide
 ```
 
 `web/`のUIは、デジタル庁デザインシステム（DADS）に準拠したテンプレート[workspace-ui-template-dads](https://github.com/knk1313/workspace-ui-template-dads)のコミット`28286f9`（0.3.0）に基づく。開発方法は[web/README.md](web/README.md)を参照。
