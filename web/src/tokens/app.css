@@ -35,6 +35,11 @@
 }
 
 @theme {
+  /* 待っている間のアバター（components/app/BotAvatar.tsx） */
+  --spacing-avatar: 6rem; /* 96px */
+}
+
+@theme {
   /* FormField の横並び（ラベル 1 : 入力 2）。テンプレートの任意値クラス grid-cols-[1fr_2fr] をトークンにした */
   --grid-template-columns-form: 1fr 2fr;
 }

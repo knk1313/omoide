@@ -46,6 +46,8 @@ describe("プレビュー・ダウンロード画面", () => {
         const bar = await screen.findByRole("progressbar", { name: "プレビューを作っています" });
         await waitFor(() => expect(bar).toHaveAttribute("aria-valuenow", "40"));
         expect(screen.getByText("40%")).toBeInTheDocument();
+        // プレビューを作っている間は、考え中のアバターを添える
+        expect(document.querySelector(".size-avatar")).toBeInTheDocument();
         finished = true;
 
         const video = await screen.findByLabelText("プレビュー動画");
@@ -97,6 +99,8 @@ describe("プレビュー・ダウンロード画面", () => {
         await screen.findByLabelText("プレビュー動画");
         await user.click(screen.getByRole("button", { name: "完成版を作る" }));
         expect(await screen.findByRole("progressbar", { name: "完成版を作っています" })).toBeInTheDocument();
+        // 完成版はカードの中なので、アバターは出さずにバーだけにする
+        expect(document.querySelector(".size-avatar")).not.toBeInTheDocument();
 
         const save = await screen.findByRole("link", { name: "保存する" });
         expect(save).toHaveAttribute("download");
@@ -108,6 +112,8 @@ describe("プレビュー・ダウンロード画面", () => {
         expect(save).toHaveAttribute("href", `/download/output?name=${encodeURIComponent("9月の旅行")}`);
         expect(save).toHaveAttribute("download", "9月の旅行.mp4");
         expect(screen.getByText("完成版ができました")).toBeInTheDocument();
+        // 補足は、拡張子と使えない文字の 2 文を、行を分けて出す
+        expect(screen.getByText(/拡張子（\.mp4）は自動で付きます。/).querySelector("br")).toBeInTheDocument();
     });
 
     it("ファイル名が空や使えない文字なら、保存に進まずに入力欄の下に理由を出す", async () => {

@@ -36,10 +36,11 @@ describe("Mac のブラウザーの「始める」画面", () => {
             "GET /launcher/api/status": { status: 200, body: idle },
             "POST /launcher/api/start": { status: 200, body: running },
         });
-        await screen.findByRole("heading", { level: 1, name: "omoideを始める" });
+        // 見出しは読み込み中から（読み上げだけに）あるので、読み込んだ中身（保存先）が出るまで待つ
+        expect(await screen.findByText("/Users/me/omoide/input")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "omoideを始める" })).toBeInTheDocument();
         // スマホの手順やログインの画面ではない
         expect(screen.queryByRole("navigation", { name: "手順" })).not.toBeInTheDocument();
-        expect(screen.getByText("/Users/me/omoide/input")).toBeInTheDocument();
 
         await user.type(screen.getByLabelText(/^パスワード※必須/), "secret");
         await user.type(screen.getByLabelText(/^パスワード（確認）/), "secret");

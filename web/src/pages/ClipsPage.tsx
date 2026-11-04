@@ -114,7 +114,8 @@ export default function ClipsPage() {
         return (
             <div className="flex flex-1 flex-col gap-6">
                 {header}
-                <Loading />
+                {/* クリップの一覧は読み込みに時間がかかるので、考え中のアバターを出す */}
+                <Loading avatar />
             </div>
         );
     }
