@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -103,6 +104,28 @@ def signature_valid(path: Path) -> bool:
     return subprocess.run(["codesign", "--verify", "--strict", str(path)], capture_output=True).returncode == 0
 
 
+def verify_zip(archive: Path) -> None:
+    """作った zip を、利用者と同じ方法で展開し直し、リンクがすべて行き先を持つかを確かめる（macOS・Linux）。
+
+    macOS は Finder のアーカイブユーティリティと同じ ditto、Linux は unzip で展開する。Windows はリンクを使わないので確かめない。
+    macOS では、展開した後の部品の署名も確かめる。
+    """
+    system = platform.system()
+    if system == "Windows":
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        command = ["ditto", "-x", "-k", str(archive), tmp] if system == "Darwin" else ["unzip", "-q", str(archive), "-d", tmp]
+        subprocess.run(command, check=True)
+        extracted = Path(tmp) / "omoide"
+        broken = [str(p.relative_to(extracted)) for p in extracted.rglob("*") if p.is_symlink() and not p.exists()]
+        if broken:
+            sys.exit("zip を展開すると、行き先のないリンクがあります:\n" + "\n".join(broken))
+        if system == "Darwin":
+            invalid = [str(p.relative_to(extracted)) for p in macho_files(extracted) if not signature_valid(p)]
+            if invalid:
+                sys.exit("zip を展開すると、署名が正しくない部品があります:\n" + "\n".join(invalid))
+
+
 def main() -> None:
     if not (ROOT / "web" / "dist" / "index.html").is_file():
         sys.exit("画面がビルドされていません。cd web && npm ci && npm run build を実行してください")
@@ -131,16 +154,23 @@ def main() -> None:
     # 実行の権限を保つため、zipfile で権限ごと書く（shutil.make_archive は Windows で作ると権限が落ちる）
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in sorted(app.rglob("*")):
-            info = zipfile.ZipInfo.from_file(path, Path("omoide") / path.relative_to(app))
+            name = Path("omoide") / path.relative_to(app)
+            # リンクは、フォルダを指していてもリンクのまま入れる（先に is_dir で判定すると、空のフォルダになってしまう。
+            # Python.framework の Versions/Current と Resources がこれに当たり、v0.1.1 では壊れていた）
+            if path.is_symlink():
+                info = zipfile.ZipInfo(str(name))
+                info.create_system = 3  # Unix（リンクの印を読む展開ソフトのため）
+                info.external_attr = 0o120777 << 16
+                zf.writestr(info, str(path.readlink()))
+                continue
+            info = zipfile.ZipInfo.from_file(path, name)
             if path.is_dir():
                 zf.writestr(info, "")
-            elif path.is_symlink():
-                info.external_attr = (0o120777 << 16)
-                zf.writestr(info, str(path.readlink()))
             else:
                 info.compress_type = zipfile.ZIP_DEFLATED
                 with path.open("rb") as f:
                     zf.writestr(info, f.read())
+    verify_zip(archive)
     print(f"できた: {archive}（{archive.stat().st_size / 1e6:.0f}MB）")
 
 
