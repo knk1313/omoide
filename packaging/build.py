@@ -2,10 +2,12 @@
 
 前提: 画面をビルドしてある（web/dist）、requirements-build.txt を入れてある、packaging/fetch_ffmpeg.py を実行してある。
 使い方: python packaging/build.py
-できるもの: packaging/dist/omoide-<OS>-<CPU>.zip（中は omoide/ フォルダ 1 つ）
+できるもの: packaging/dist/omoide-<OS>-<CPU>.zip（中は omoide/ フォルダ 1 つ。macOS では、その中に omoide.app）
 """
 
+import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -39,7 +41,7 @@ def notices() -> str:
         "FFmpeg は FFmpeg の開発者の著作物で、omoide の作者のものではない。https://ffmpeg.org/legal.html",
         ffmpeg_source,
         "GPL の全文: https://www.gnu.org/licenses/gpl-3.0.html"
-        + ("（ビルドに付いていた LICENSE.txt も ffmpeg/ に含めている）" if ffmpeg_license.is_file() else ""),
+        + ("（ビルドに付いていた LICENSE.txt を FFmpeg-LICENSE.txt として含めている）" if ffmpeg_license.is_file() else ""),
         "",
         "■ Python とライブラリ",
         "Python（PSF License）、FastAPI・Starlette・Pydantic・uvicorn（MIT／BSD）、NumPy（BSD）、qrcode（BSD）などを含む。",
@@ -47,6 +49,32 @@ def notices() -> str:
         "",
     ])
 
+
+HOW_TO_START_MAC = """omoide の起動のしかた（Mac）
+
+■ 初めて開く前に（1 回だけ）
+Apple の確認（公証）を受けていないアプリなので、ダウンロードしたままだと「壊れているため開けません」などと出て開けない。
+「ターミナル」を開き、次の 1 行を入力して Enter を押す（omoide フォルダを「ダウンロード」に展開した場合）。
+フォルダを別の場所に置いたときは、最後の ~/Downloads/omoide の代わりに、omoide フォルダをターミナルへドラッグ＆ドロップする。
+
+    xattr -dr com.apple.quarantine ~/Downloads/omoide
+
+これで、ダウンロードしたファイルに付く印が外れ、ダブルクリックで開ける。
+omoide.app は、「アプリケーション」フォルダへ移して使ってもよい（上の 1 行を済ませてから移す）。
+
+■ 使い方
+1. 「omoide」（omoide.app）をダブルクリックする。Dock にアイコンが出る
+2. ブラウザーで「omoideを始める」画面が開くので、スマホで入力するパスワードと期限を決めて「共有を始める」を押す
+3. 表示された QR コードを、同じ Wi-Fi につないだスマホのカメラで読み取る
+4. 終わるときは、ブラウザーの画面の「omoideを終了する」を押す。Dock のアイコンの「終了」や、Cmd+Q でも終われる
+
+ブラウザーの画面を閉じてしまったときは、Dock の omoide のアイコンを押すと開き直せる。
+初めて起動するときは、Mac が中の部品を確かめるため、画面が開くまで 1 分ほどかかることがある。
+
+取り込んだ動画と作った動画は、「ムービー」フォルダの omoide（~/Movies/omoide）の input・output に置かれる。
+置き場所は、スマホの画面の「設定」で変えられる。
+詳しくは https://github.com/knk1313/omoide を参照。
+"""
 
 HOW_TO_START = """omoide の起動のしかた
 
@@ -56,16 +84,6 @@ HOW_TO_START = """omoide の起動のしかた
 4. 終わるときは、ブラウザーの画面の「omoideを終了する」を押す
 
 一緒に開くターミナル（Windows はコマンドプロンプト）の窓は閉じない。閉じると omoide も終わる。
-初めて起動するときは、Mac が中の部品を確かめるため、画面が開くまで 1 分ほどかかることがある。
-
-■ Mac で初めて開く前に（1 回だけ）
-Apple の確認（公証）を受けていないアプリなので、ダウンロードしたままだと「壊れているため開けません」などと出て開けない。
-「ターミナル」を開き、次の 1 行を入力して Enter を押す（omoide フォルダを「ダウンロード」に展開した場合）。
-フォルダを別の場所に置いたときは、最後の ~/Downloads/omoide の代わりに、omoide フォルダをターミナルへドラッグ＆ドロップする。
-
-    xattr -dr com.apple.quarantine ~/Downloads/omoide
-
-これで、ダウンロードしたファイルに付く印が外れ、ダブルクリックで開ける。
 
 ■ Windows で「Windows によって PC が保護されました」と出たとき
 「詳細情報」→「実行」を押す。ファイアウォールの確認が出たら「プライベート ネットワーク」を許可する。
@@ -87,6 +105,12 @@ def fix_signatures(app: Path) -> None:
         for version in (framework / "Versions").iterdir():
             if version.is_dir() and not version.is_symlink():
                 subprocess.run(["codesign", "--force", "--sign", "-", str(version)], check=True, capture_output=True)
+    # 中の部品を署名し直すと、.app 全体の署名が合わなくなるので、最後に .app を署名し直す
+    for bundle in app.glob("*.app"):
+        subprocess.run(["codesign", "--force", "--sign", "-", str(bundle)], check=True, capture_output=True)
+        verify = subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], capture_output=True, text=True)
+        if verify.returncode != 0:
+            sys.exit(f"{bundle.name} の署名が正しくありません:\n{verify.stderr}")
     invalid = [str(p.relative_to(app)) for p in macho_files(app) if not signature_valid(p)]
     if invalid:
         sys.exit("署名が正しくない部品があります:\n" + "\n".join(invalid))
@@ -126,8 +150,28 @@ def verify_zip(archive: Path) -> None:
             sys.exit("zip を展開すると、行き先のないリンクがあります:\n" + "\n".join(broken))
         if system == "Darwin":
             invalid = [str(p.relative_to(extracted)) for p in macho_files(extracted) if not signature_valid(p)]
+            invalid += [str(p.relative_to(extracted)) for p in extracted.glob("*.app") if not signature_valid(p)]
             if invalid:
                 sys.exit("zip を展開すると、署名が正しくない部品があります:\n" + "\n".join(invalid))
+
+
+def make_icns() -> None:
+    """macOS: icon.png から、.app のアイコン（omoide.icns）を作る。sips と iconutil は macOS に入っている。"""
+    iconset = HERE / "build" / "omoide.iconset"
+    shutil.rmtree(iconset, ignore_errors=True)
+    iconset.mkdir(parents=True)
+    for size in (16, 32, 128, 256, 512):
+        for scale in (1, 2):
+            name = f"icon_{size}x{size}{'@2x' if scale == 2 else ''}.png"
+            px = str(size * scale)
+            subprocess.run(["sips", "-z", px, px, str(HERE / "icon.png"), "--out", str(iconset / name)], check=True, capture_output=True)
+    subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(HERE / "build" / "omoide.icns")], check=True)
+
+
+def version() -> str:
+    """Info.plist に書く版。タグ（v1.2.3）から作るときはその番号、それ以外は 0.0.0。"""
+    ref = os.environ.get("GITHUB_REF_NAME", "")
+    return ref[1:] if re.fullmatch(r"v\d+\.\d+\.\d+", ref) else "0.0.0"
 
 
 def main() -> None:
@@ -136,23 +180,34 @@ def main() -> None:
     if not any((HERE / "build" / "ffmpeg").glob("ffmpeg*")):
         sys.exit("ffmpeg がありません。python packaging/fetch_ffmpeg.py を実行してください")
 
+    mac = platform.system() == "Darwin"
     shutil.rmtree(DIST, ignore_errors=True)
+    if mac:
+        make_icns()
     subprocess.run(
         [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--distpath", str(DIST), "--workpath", str(WORK),
          str(HERE / "omoide.spec")],
         check=True,
+        env={**os.environ, "OMOIDE_VERSION": version()},
     )
     app = DIST / "omoide"
-    if platform.system() == "Darwin":
+    if mac:
+        # 配る omoide/ フォルダには、omoide.app と説明のファイルだけを置く（データは ~/Movies/omoide に置く）
+        staged = DIST / "omoide-mac"
+        staged.mkdir()
+        shutil.move(DIST / "omoide.app", staged / "omoide.app")
+        shutil.rmtree(app)
+        staged.rename(app)
         fix_signatures(app)
     shutil.copy2(ROOT / "LICENSE", app / "LICENSE.txt")
     (app / "THIRD_PARTY_NOTICES.txt").write_text(notices(), encoding="utf-8")
-    (app / "起動のしかた.txt").write_text(HOW_TO_START, encoding="utf-8")
-    for folder in ("input", "output"):
-        (app / folder).mkdir(exist_ok=True)
+    (app / "起動のしかた.txt").write_text(HOW_TO_START_MAC if mac else HOW_TO_START, encoding="utf-8")
+    if not mac:
+        for folder in ("input", "output"):
+            (app / folder).mkdir(exist_ok=True)
     license_txt = HERE / "build" / "ffmpeg" / "LICENSE.txt"
     if license_txt.is_file():
-        shutil.copy2(license_txt, app / "_internal" / "ffmpeg" / "LICENSE.txt")
+        shutil.copy2(license_txt, app / "FFmpeg-LICENSE.txt")
 
     archive = DIST / f"omoide-{target()}.zip"
     # 実行の権限を保つため、zipfile で権限ごと書く（shutil.make_archive は Windows で作ると権限が落ちる）

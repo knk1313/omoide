@@ -2,9 +2,11 @@
 
 確かめること:
 1. アプリに含めた ffmpeg が動き、完成版の作成に使う libx264 が入っている
-2. 別のフォルダから起動しても、アプリのフォルダの input/ を見る
+2. 別のフォルダから起動しても、保存先の input/ を見る（macOS は ~/Movies/omoide、ほかはアプリのフォルダ）
 3. serve を起動し、パスワードを入れると、共有の URL で画面が開き、ログインして API が使える（macOS・Linux だけ。
    パスワードの入力に疑似端末を使うため）
+4. 「始める」画面（launch）から共有を始め、スマホの画面が開き、画面から終了できる
+5. macOS: omoide.app の署名が、動かした後も正しい（.app の中を書き換えていない）
 
 使い方: python packaging/smoke_test.py packaging/dist/omoide
 """
@@ -31,18 +33,21 @@ def check(condition: bool, message: str) -> None:
     print(f"OK: {message}")
 
 
-def check_ffmpeg(app: Path) -> None:
+MAC = sys.platform == "darwin"
+
+
+def check_ffmpeg(internal: Path) -> None:
     name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
-    ffmpeg = app / "_internal" / "ffmpeg" / name
+    ffmpeg = internal / "ffmpeg" / name
     check(ffmpeg.is_file(), f"ffmpeg が含まれている（{ffmpeg}）")
     encoders = subprocess.run([str(ffmpeg), "-hide_banner", "-encoders"], capture_output=True, text=True, check=True).stdout
     check("libx264" in encoders, "ffmpeg に libx264 が入っている")
 
 
-def check_scan(app: Path, executable: Path) -> None:
+def check_scan(executable: Path) -> None:
     with tempfile.TemporaryDirectory() as elsewhere:
         result = subprocess.run([str(executable), "scan"], cwd=elsewhere, capture_output=True, text=True, encoding="utf-8")
-    check(result.returncode == 1 and "input" in result.stdout + result.stderr, "別のフォルダから起動しても、アプリの input/ を見る")
+    check(result.returncode == 1 and "input" in result.stdout + result.stderr, "別のフォルダから起動しても、保存先の input/ を見る")
 
 
 def check_serve(executable: Path) -> None:
@@ -169,15 +174,24 @@ def check_launch(executable: Path) -> None:
 
 def main() -> None:
     app = Path(sys.argv[1]).resolve()
-    executable = app / ("omoide.exe" if sys.platform == "win32" else "omoide")
+    if MAC:
+        bundle = app / "omoide.app"
+        executable = bundle / "Contents" / "MacOS" / "omoide"
+        internal = bundle / "Contents" / "Frameworks"
+    else:
+        executable = app / ("omoide.exe" if sys.platform == "win32" else "omoide")
+        internal = app / "_internal"
     check(executable.is_file(), f"実行ファイルがある（{executable}）")
-    check_ffmpeg(app)
-    check_scan(app, executable)
+    check_ffmpeg(internal)
+    check_scan(executable)
     if sys.platform == "win32":
         print("Windows では serve の確認を省く（パスワードの入力に疑似端末を使うため）")
     else:
         check_serve(executable)
     check_launch(executable)
+    if MAC:
+        verify = subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], capture_output=True, text=True)
+        check(verify.returncode == 0, "動かした後も omoide.app の署名が正しい" + ("" if verify.returncode == 0 else "\n" + verify.stderr))
     print("すべて確かめた")
 
 
