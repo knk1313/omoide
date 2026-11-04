@@ -7,6 +7,8 @@ from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
 
+from .runtime import tool
+
 
 @dataclass(frozen=True)
 class VideoInfo:
@@ -21,7 +23,7 @@ class VideoInfo:
 def probe(path: Path) -> VideoInfo:
     result = subprocess.run(
         [
-            "ffprobe", "-v", "error",
+            tool("ffprobe"), "-v", "error",
             "-select_streams", "v:0",
             "-show_entries", "stream=width,height,avg_frame_rate:format=duration:format_tags=creation_time",
             "-of", "json",
