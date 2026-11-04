@@ -3,19 +3,18 @@ import getpass
 import os
 import shutil
 import sys
-import threading
-from functools import partial
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from . import runtime
-from .auth import MAX_PASSWORD_LENGTH, ShareAuth, parse_duration
+from .auth import parse_duration
 from .cache import load_or_scan
 from .clean import clean_targets, format_size, remove
 from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
 from .network import port_available, resolve_host
+from .share import ShareError, check_password, prepare
 from .probe import VideoInfo
 from .project import load_project
 from .scan import VideoScan
@@ -23,14 +22,22 @@ from .storage import Storage, apply_pending
 from .thumbnails import ensure_thumbnails
 
 
-MIN_PASSWORD_LENGTH = 4
 # scan --export を値なしで付けたとき（保存先の output に書き出す）
 EXPORT_DEFAULT = Path("<output>")
+
+
+def _use_utf8_output() -> None:
+    """Windows で出力をパイプにつなぐと cp1252 になり、日本語を出すと落ちるため、UTF-8 で出す。"""
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        if encoding != "utf8" and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
+    _use_utf8_output()
     if not runtime.FROZEN:
         return _run(argv)
     # 単体アプリ: データは展開したフォルダに置き、中の ffmpeg を使えるようにする
@@ -38,12 +45,14 @@ def main(argv: list[str] | None = None) -> int:
     runtime.allow_bundled_tools()
     if argv:
         return _run(argv)
-    # ダブルクリックで起動したときは serve を動かし、終わってもすぐに窓を閉じない（理由やエラーを読めるように）
-    code = _run(["serve"])
-    try:
-        input("\nEnter キーを押すと閉じます。")
-    except (EOFError, KeyboardInterrupt):
-        pass
+    # ダブルクリックで起動したときは、Mac のブラウザーで「始める」画面を開く。
+    # うまく起動できなかったときは、すぐに窓を閉じない（理由を読めるように）
+    code = _run(["launch"])
+    if code != 0:
+        try:
+            input("\nEnter キーを押すと閉じます。")
+        except (EOFError, KeyboardInterrupt):
+            pass
     return code
 
 
@@ -83,6 +92,9 @@ def _run(argv: list[str]) -> int:
         "--expires", default="2h", help="共有を終えるまでの時間。2h・30m・90s のように指定する (既定: 2h)",
     )
 
+    launch_parser = sub.add_parser("launch", help="Mac のブラウザーで「始める」画面を開き、そこから共有を始める（単体アプリの既定）")
+    launch_parser.add_argument("--no-browser", action="store_true", help="ブラウザーを開かない（表示した URL を自分で開く）")
+
     clean = sub.add_parser(
         "clean", help="入力動画と、そこから作った生成物をまとめて消す（serve を止めてから実行する）",
     )
@@ -93,7 +105,7 @@ def _run(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     # 保存先（開発環境では今のフォルダ、単体アプリでは設定した場所）。次の起動で移す予定があれば、ここで移す
     store = apply_pending()
-    input_dir = args.input or store.input
+    input_dir = getattr(args, "input", None) or store.input
     if args.command == "scan":
         export = store.output if args.export == EXPORT_DEFAULT else args.export
         return scan_command(input_dir, export, store)
@@ -101,6 +113,12 @@ def _run(argv: list[str]) -> int:
         return join_command(input_dir, args.select, args.speed, args.output or store.output, store)
     if args.command == "serve":
         return serve_command(input_dir, args.host, args.port, args.expires, store)
+    if args.command == "launch":
+        from .launcher import launch
+
+        if not _tools_available():
+            return 1
+        return launch(store, _tools_available, open_browser=not args.no_browser)
     if args.command == "clean":
         return clean_command(input_dir, args.output or store.output, args.yes, store.work)
     return 1
@@ -197,77 +215,40 @@ def clean_command(input_dir: Path, output_dir: Path, yes: bool, work_dir: Path) 
 
 
 def serve_command(folder: Path, host: str | None, port: int, expires: str, store: Storage) -> int:
-    # サーバーの依存は scan / join では使わないので、ここで読み込む
-    import uvicorn
-
-    from .jobs import JobManager, analyze_video
-    from .server import create_app
     from .webbuild import build_problem
-    from .workspace import Workspace
 
     try:
-        host = resolve_host(host)
         lifetime = parse_duration(expires)
+        resolve_host(host)
     except ValueError as e:
         return _fail(str(e))
-    if not port_available(host, port):
+    if not port_available(resolve_host(host), port):
         return _fail(f"ポート {port} は使用中です。--port で別の番号を指定してください。")
 
     # 解析を待たずに席を外せるよう、パスワードは先に聞く
     password = _ask_password()
     if password is None:
         return _fail("パスワードが設定されなかったため、終了します。")
-
     if not _tools_available():
         return 1
-    # スマホから動画を取り込めるので、入力フォルダが空でも起動する
-    folder.mkdir(parents=True, exist_ok=True)
-    scans = []
-    for info in find_videos(folder):
-        try:
-            scan = load_or_scan(info, store.cache)
-        except ValueError as e:
-            # 1 本読めなくても、ほかの動画で使えるようにする
-            print(f"{info.path.name} は読み飛ばします: {e}", file=sys.stderr)
-            continue
-        ensure_thumbnails(scan, store.thumbnails)
-        scans.append(scan)
-    panels = sum(s.candidate_count for s in scans)
-    if not scans:
-        print("動画はまだありません。スマホの画面からアップロードできます。")
-    print(f"動画 {len(scans)} 本 / 中身のあるパネル {panels} 件を読み込みました。")
+    try:
+        share = prepare(password, lifetime, store, folder, host, port)
+    except ShareError as e:
+        return _fail(str(e))
 
     problem = build_problem()
     if problem:
         print(f"\n注意: {problem}", file=sys.stderr)
-
-    auth = ShareAuth(password, lifetime)
-    url = f"http://{host}:{port}/p/{auth.token}"
-    ends_at = datetime.now() + timedelta(seconds=lifetime)
-    print(f"\nURL: {url}")
-    print(f"期限: {ends_at:%H:%M} まで")
-    _print_qr(url)
+    print(f"\nURL: {share.url}")
+    print(f"期限: {share.ends_at:%H:%M} まで")
+    _print_qr(share.url)
     # uvicorn が動き出すと戻らないので、案内を先に出し切る
     print("同じ Wi-Fi に接続したスマホで QR コードを読み取ってください。終了するには Ctrl+C を押してください。", flush=True)
-
-    # スマホから取り込んだ動画も、入力フォルダに置く（次に起動したときも読み込まれる）
-    workspace = Workspace(scans, store.project, store.thumbnails, store.clips)
-    jobs = JobManager(workspace, store.previews, store.output)
-    app = create_app(
-        workspace, auth, jobs=jobs, upload_dir=folder, analyze=partial(analyze_video, cache_dir=store.cache), storage=store,
-    )
-    server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
-    expiry = threading.Timer(lifetime, lambda: setattr(server, "should_exit", True))
-    expiry.daemon = True
-    expiry.start()
     try:
-        server.run()
+        share.run()
     except KeyboardInterrupt:
         # uvicorn は Ctrl+C で止まった後に KeyboardInterrupt を送出し直す。利用者の通常の終了なので、そのまま終える
         pass
-    finally:
-        expiry.cancel()
-        auth.end()
     print("共有を終了しました。この URL にはもうアクセスできません。")
     return 0
 
@@ -277,11 +258,10 @@ def _ask_password() -> str | None:
     for _ in range(3):
         try:
             password = getpass.getpass("スマホで入力するパスワード: ")
-            if len(password) < MIN_PASSWORD_LENGTH:
-                print(f"{MIN_PASSWORD_LENGTH} 文字以上にしてください。")
-                continue
-            if len(password) > MAX_PASSWORD_LENGTH:
-                print(f"{MAX_PASSWORD_LENGTH} 文字以内にしてください。")
+            try:
+                check_password(password)
+            except ShareError as e:
+                print(f"{e}。")
                 continue
             if getpass.getpass("もう一度入力してください: ") != password:
                 print("一致しませんでした。")

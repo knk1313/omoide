@@ -76,3 +76,20 @@ export type StorageStatus = {
     /** 今の保存先にあるファイルの数と大きさ。 */
     usage: Record<StorageKind, { count: number; bytes: number }>;
 };
+
+/** Mac のブラウザーの「始める」画面（launcher）の様子。 */
+export type LauncherStatus = {
+    state: "idle" | "running";
+    /** スマホで開く共有の URL（共有中だけ）。 */
+    url: string | null;
+    /** 共有を終える時刻（ISO 8601、共有中だけ）。 */
+    ends_at: string | null;
+    /** 読み込んだ動画の数（共有中だけ）。 */
+    videos: number | null;
+    /** 共有が止まった理由など、画面に出すお知らせ。 */
+    notice: string | null;
+    storage: StorageFolders;
+};
+
+/** 共有の期限の選択肢。 */
+export type ShareExpiry = "1h" | "2h" | "4h";

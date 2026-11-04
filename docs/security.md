@@ -43,6 +43,15 @@ omoideのパスワードは、家庭内LANでの誤アクセスを防ぐため�
 - LAN内のインターフェースだけで待ち受ける
 - テレメトリや外部への送信を入れない
 
+## Macの「始める」画面
+
+単体アプリをダブルクリックしたとき（`main.py launch`）は、Macのブラウザーで「始める」画面を開き、そこでパスワードを決める。この画面には、スマホ向けの共有と別の守りを付ける。
+
+- `127.0.0.1`の空いているポートだけで待ち受け、Macの外からは開けない
+- 起動のたびに合言葉（トークン、24バイト）を決め、ブラウザーで開くURLに入れる。開いたときにCookie（`omoide_launcher`、HttpOnly、SameSite=Strict）を付け、画面のAPIはこのCookieが無いと403を返す。同じMacのほかのサイトから、勝手に共有を始められないようにするため
+- `Host`ヘッダーが`127.0.0.1`か`localhost`でない要求は403にする（DNSリバインディングへの対策）
+- パスワードは画面からAPIへ送り、ファイルやログには残さない。スマホ側のパスワード・共有のURL・期限の扱いは、ターミナルで始めたときと同じ
+
 ## 出典
 
 - [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)

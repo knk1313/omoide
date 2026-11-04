@@ -20,8 +20,11 @@ Python・Node.js・FFmpegを入れなくても使える。
    - Windows：`omoide-windows-x64.zip`
    - Linux：`omoide-linux-x64.zip`
 2. zipを展開し、`omoide`フォルダの`omoide`（Windowsは`omoide.exe`）をダブルクリックする
-3. 開いた窓で、スマホで入力するパスワードを決める
+3. ブラウザーで「omoideを始める」画面が開くので、スマホで入力するパスワードと共有の期限を決めて「共有を始める」を押す
 4. 表示されたQRコードを、同じWi-Fiにつないだスマホのカメラで読み取る
+5. 終わるときは、ブラウザーの画面の「omoideを終了する」を押す
+
+一緒に開くターミナル（Windowsはコマンドプロンプト）の窓は、閉じないでおく。閉じると、omoideも終わる。
 
 署名していないアプリなので、初めて開くときはOSが起動を止める。
 
@@ -56,7 +59,10 @@ python3 -m venv .venv
 .venv/bin/python main.py join --speed 1.5                     # 除外していない、中身のあるパネルをすべて使う
 .venv/bin/python main.py join --select collection_export/001-1,collection_export/002-3
 
-# 同じ Wi-Fi のスマホから操作するサーバーを起動する (先に画面をビルドしておく: cd web && npm run build)
+# Mac のブラウザーで「始める」画面を開き、そこから共有を始める（単体アプリをダブルクリックしたときと同じ）
+.venv/bin/python main.py launch
+
+# 同じ Wi-Fi のスマホから操作するサーバーを、ターミナルだけで起動する (先に画面をビルドしておく: cd web && npm run build)
 # 起動するとパスワードを聞かれ、URL と QR コードが表示される。既定では 2 時間で終了する
 # 動画はスマホからアップロードでき、input/ に置いた動画も読み込む
 .venv/bin/python main.py serve --expires 2h

@@ -119,6 +119,54 @@ def check_serve(executable: Path) -> None:
             os.waitpid(pid, 0)
 
 
+def check_launch(executable: Path) -> None:
+    """「始める」画面（launch）を起動し、画面の API で共有を始め、スマホの画面が開くまでを確かめてから、終了する。"""
+    process = subprocess.Popen(
+        [str(executable), "launch", "--no-browser"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+    )
+    try:
+        launcher_url = None
+        end = time.time() + 120
+        lines: list[str] = []
+        while time.time() < end and launcher_url is None:
+            line = process.stdout.readline()
+            if not line:
+                break
+            lines.append(line)
+            match = re.search(r"http://127\.0\.0\.1:\d+/launcher/t/[A-Za-z0-9_-]+", line)
+            if match:
+                launcher_url = match.group(0)
+        check(launcher_url is not None, "「始める」画面の URL を表示した" + ("" if launcher_url else "\n" + "".join(lines)))
+        # 残りの出力は読み捨て続ける（受け口が埋まってアプリが止まらないように）
+        threading.Thread(target=lambda: [None for _ in process.stdout], daemon=True).start()
+
+        base = launcher_url.split("/launcher/")[0]
+        jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        html = opener.open(launcher_url, timeout=10).read().decode()
+        check('id="root"' in html, "「始める」画面（web/dist）が開く")
+
+        def post(path: str, body: dict | None = None) -> dict:
+            request = urllib.request.Request(
+                f"{base}{path}", data=json.dumps(body or {}).encode(), headers={"Content-Type": "application/json"}, method="POST",
+            )
+            return json.loads(opener.open(request, timeout=60).read())
+
+        status = post("/launcher/api/start", {"password": PASSWORD, "expires": "1h"})
+        check(status["state"] == "running" and status["url"], "画面から共有を始められる")
+        qr = opener.open(f"{base}/launcher/api/qr.svg", timeout=10).read()
+        check(b"<svg" in qr, "QR コードの画像が出る")
+        share = http.cookiejar.CookieJar()
+        phone = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(share))
+        check('id="root"' in phone.open(status["url"], timeout=10).read().decode(), "共有の URL でスマホの画面が開く")
+        post("/launcher/api/quit")
+        process.wait(timeout=30)
+        check(process.returncode == 0, "画面の「omoideを終了する」で終わる")
+    finally:
+        if process.poll() is None:
+            process.kill()
+
+
 def main() -> None:
     app = Path(sys.argv[1]).resolve()
     executable = app / ("omoide.exe" if sys.platform == "win32" else "omoide")
@@ -129,6 +177,7 @@ def main() -> None:
         print("Windows では serve の確認を省く（パスワードの入力に疑似端末を使うため）")
     else:
         check_serve(executable)
+    check_launch(executable)
     print("すべて確かめた")
 
 

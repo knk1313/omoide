@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import AppLayout from "@/layouts/AppLayout";
 import ErrorBoundary from "@/components/app/ErrorBoundary";
+import LauncherApp from "@/launcher/LauncherApp";
 import ClipsPage from "@/pages/ClipsPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -15,6 +16,16 @@ import { ThemePreferenceProvider } from "@/context/ThemePreference";
 // 画面の URL。手順の 4 画面（/videos・/・/settings・/preview）は app.config.ts の steps と合わせる。
 // ログインの状態は SessionProvider がアプリを開いたときに一度確かめる。
 export default function App() {
+    // Mac のブラウザーで開く「始める」画面は、スマホの手順とは別の外枠で出す（setlog_join/launcher.py が配信する）
+    if (window.location.pathname.startsWith("/launcher")) {
+        return (
+            <ErrorBoundary>
+                <ThemePreferenceProvider>
+                    <LauncherApp />
+                </ThemePreferenceProvider>
+            </ErrorBoundary>
+        );
+    }
     return (
         <ErrorBoundary>
             <ThemePreferenceProvider>

@@ -24,6 +24,15 @@ class ToolTest(unittest.TestCase):
             self.assertEqual(runtime.tool("ffmpeg"), "ffmpeg")
 
 
+class LaunchCommandTest(unittest.TestCase):
+    def test_launch_command_opens_the_launcher_with_the_storage(self):
+        with mock.patch("setlog_join.launcher.launch", return_value=0) as launch, mock.patch.object(cli, "_tools_available", return_value=True):
+            self.assertEqual(cli.main(["launch", "--no-browser"]), 0)
+        store, _tools = launch.call_args.args
+        self.assertEqual(store, cli.apply_pending())
+        self.assertEqual(launch.call_args.kwargs, {"open_browser": False})
+
+
 class FrozenMainTest(unittest.TestCase):
     def setUp(self):
         cwd = os.getcwd()
@@ -39,11 +48,17 @@ class FrozenMainTest(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def test_double_click_runs_serve_in_the_app_folder_and_waits_before_closing(self):
-        with mock.patch.object(cli, "serve_command", return_value=0) as serve, mock.patch("builtins.input") as wait:
+    def test_double_click_opens_the_launcher_in_the_app_folder(self):
+        with mock.patch.object(cli, "_run", return_value=0) as run, mock.patch("builtins.input") as wait:
             self.assertEqual(cli.main([]), 0)
-        serve.assert_called_once()
+        run.assert_called_once_with(["launch"])
         self.assertEqual(Path.cwd().resolve(), self.app.resolve())
+        # うまく起動して終わったときは、窓を閉じるのを待たない
+        wait.assert_not_called()
+
+    def test_waits_before_closing_when_it_could_not_start(self):
+        with mock.patch.object(cli, "_run", return_value=1), mock.patch("builtins.input") as wait:
+            self.assertEqual(cli.main([]), 1)
         wait.assert_called_once()
 
     def test_commands_with_arguments_do_not_wait(self):

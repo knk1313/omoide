@@ -106,3 +106,16 @@
 ```
 
 `metadata_date`は動画のメタデータから読んだ日付で、撮影日を入力するときの初期値に使う。`date`は利用者が入力した撮影日である。
+
+## Macの「始める」画面のAPI
+
+単体アプリをダブルクリックしたとき（`main.py launch`）に、Macの中だけで開く「始める」画面が使う。`127.0.0.1`だけで待ち受け、起動のたびに決める合言葉のCookie（`omoide_launcher`）が無いと403を返す。詳しくは[security.md](security.md)を参照。
+
+| エンドポイント | 内容 | 本文 |
+| --- | --- | --- |
+| `GET /launcher/t/<合言葉>` | 起動したときにブラウザーで開くURL。合言葉が合えばCookieを付けて`/launcher`へ移す | なし |
+| `GET /launcher/api/status` | 共有の様子（`idle`か`running`）、共有のURL、期限、動画の数、お知らせ、保存先 | なし |
+| `POST /launcher/api/start` | パスワードと期限（`1h`・`2h`・`4h`）で、スマホ向けの共有を始める。始められないときは409と理由 | `{"password": "…", "expires": "2h"}` |
+| `POST /launcher/api/stop` | 共有を止める | なし |
+| `GET /launcher/api/qr.svg` | 共有のURLのQRコード（SVG）。共有していなければ404 | なし |
+| `POST /launcher/api/quit` | 共有を止めて、omoideを終了する | なし |
