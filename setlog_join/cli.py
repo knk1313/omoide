@@ -4,13 +4,14 @@ import os
 import shutil
 import sys
 import threading
+from functools import partial
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from . import runtime
 from .auth import MAX_PASSWORD_LENGTH, ShareAuth, parse_duration
 from .cache import load_or_scan
-from .clean import WORK_DIR, clean_targets, format_size, remove
+from .clean import clean_targets, format_size, remove
 from .export import export_video
 from .inputs import find_videos
 from .join import SPEEDS, PanelRef, SelectionError, join_segments, resolve_segments
@@ -18,10 +19,13 @@ from .network import port_available, resolve_host
 from .probe import VideoInfo
 from .project import load_project
 from .scan import VideoScan
-from .thumbnails import THUMBNAIL_DIR, ensure_thumbnails
+from .storage import Storage, apply_pending
+from .thumbnails import ensure_thumbnails
 
 
 MIN_PASSWORD_LENGTH = 4
+# scan --export を値なしで付けたとき（保存先の output に書き出す）
+EXPORT_DEFAULT = Path("<output>")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,14 +52,14 @@ def _run(argv: list[str]) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     scan = sub.add_parser("scan", help="入力動画をクリップと 3 人分のパネルに分割して一覧を表示する")
-    scan.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    scan.add_argument("--input", type=Path, default=None, help="入力フォルダ (既定: 保存先の input)")
     scan.add_argument(
-        "--export", type=Path, nargs="?", const=Path("output"), default=None,
-        help="切り出したパネル動画を書き出す (既定: output)",
+        "--export", type=Path, nargs="?", const=EXPORT_DEFAULT, default=None,
+        help="切り出したパネル動画を書き出す (既定: 保存先の output)",
     )
 
     join = sub.add_parser("join", help="選んだパネルを人ごとにつなぎ、1 本の動画として書き出す")
-    join.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    join.add_argument("--input", type=Path, default=None, help="入力フォルダ (既定: 保存先の input)")
     join.add_argument(
         "--select", default=None,
         help="使うパネルを `<動画名>/<クリップ番号>-<パネル番号>` のカンマ区切りで指定する "
@@ -66,10 +70,10 @@ def _run(argv: list[str]) -> int:
         "--speed", type=float, default=None, choices=SPEEDS,
         help="全体の再生速度。省略すると project.json に保存した速度 (無ければ 1) を使う",
     )
-    join.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
+    join.add_argument("--output", type=Path, default=None, help="書き出し先のフォルダ (既定: 保存先の output)")
 
     serve = sub.add_parser("serve", help="同じ Wi-Fi のスマホから操作するためのサーバーを起動する")
-    serve.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
+    serve.add_argument("--input", type=Path, default=None, help="入力フォルダ (既定: 保存先の input)")
     serve.add_argument(
         "--host", default=None,
         help="待ち受けるアドレス。省略すると、この Mac の LAN のプライベートアドレスを使う",
@@ -82,23 +86,27 @@ def _run(argv: list[str]) -> int:
     clean = sub.add_parser(
         "clean", help="入力動画と、そこから作った生成物をまとめて消す（serve を止めてから実行する）",
     )
-    clean.add_argument("--input", type=Path, default=Path("input"), help="入力フォルダ (既定: input)")
-    clean.add_argument("--output", type=Path, default=Path("output"), help="書き出し先のフォルダ (既定: output)")
+    clean.add_argument("--input", type=Path, default=None, help="入力フォルダ (既定: 保存先の input)")
+    clean.add_argument("--output", type=Path, default=None, help="書き出し先のフォルダ (既定: 保存先の output)")
     clean.add_argument("--yes", action="store_true", help="確認せずに消す")
 
     args = parser.parse_args(argv)
+    # 保存先（開発環境では今のフォルダ、単体アプリでは設定した場所）。次の起動で移す予定があれば、ここで移す
+    store = apply_pending()
+    input_dir = args.input or store.input
     if args.command == "scan":
-        return scan_command(args.input, args.export)
+        export = store.output if args.export == EXPORT_DEFAULT else args.export
+        return scan_command(input_dir, export, store)
     if args.command == "join":
-        return join_command(args.input, args.select, args.speed, args.output)
+        return join_command(input_dir, args.select, args.speed, args.output or store.output, store)
     if args.command == "serve":
-        return serve_command(args.input, args.host, args.port, args.expires)
+        return serve_command(input_dir, args.host, args.port, args.expires, store)
     if args.command == "clean":
-        return clean_command(args.input, args.output, args.yes)
+        return clean_command(input_dir, args.output or store.output, args.yes, store.work)
     return 1
 
 
-def scan_command(folder: Path, export_dir: Path | None) -> int:
+def scan_command(folder: Path, export_dir: Path | None, store: Storage) -> int:
     videos = _load_videos(folder)
     if videos is None:
         return 1
@@ -106,10 +114,10 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     scans = []
     for info in videos:
         try:
-            scan = load_or_scan(info)
+            scan = load_or_scan(info, store.cache)
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
-        ensure_thumbnails(scan)
+        ensure_thumbnails(scan, store.thumbnails)
         _print_scan(scan)
         if export_dir is not None:
             export_video(scan, export_dir)
@@ -119,13 +127,13 @@ def scan_command(folder: Path, export_dir: Path | None) -> int:
     total_candidates = sum(s.candidate_count for s in scans)
     total_seconds = sum(s.info.duration for s in scans)
     print(f"\n合計: 動画 {len(scans)} 本 / {total_clips} クリップ / 中身のあるパネル {total_candidates} 件 / {total_seconds:.1f}s")
-    print(f"サムネイル: {THUMBNAIL_DIR}/")
+    print(f"サムネイル: {store.thumbnails}/")
     if export_dir is not None:
         print(f"切り出したパネル動画: {export_dir}/")
     return 0
 
 
-def join_command(folder: Path, select: str | None, speed: float | None, output_dir: Path) -> int:
+def join_command(folder: Path, select: str | None, speed: float | None, output_dir: Path, store: Storage) -> int:
     try:
         refs = [PanelRef.parse(text) for text in select.split(",")] if select is not None else None
     except SelectionError as e:
@@ -138,11 +146,11 @@ def join_command(folder: Path, select: str | None, speed: float | None, output_d
     scans = []
     for info in videos:
         try:
-            scans.append(load_or_scan(info))
+            scans.append(load_or_scan(info, store.cache))
         except ValueError as e:
             return _fail(f"{info.path.name}: {e}")
 
-    project = load_project()
+    project = load_project(store.project)
     if refs is None:
         refs = project.selected_refs(scans)
     if speed is None:
@@ -161,7 +169,7 @@ def join_command(folder: Path, select: str | None, speed: float | None, output_d
     return 0
 
 
-def clean_command(input_dir: Path, output_dir: Path, yes: bool, work_dir: Path = WORK_DIR) -> int:
+def clean_command(input_dir: Path, output_dir: Path, yes: bool, work_dir: Path) -> int:
     targets = clean_targets(input_dir, output_dir, work_dir)
     if not targets:
         print("消すものはありません。")
@@ -188,10 +196,11 @@ def clean_command(input_dir: Path, output_dir: Path, yes: bool, work_dir: Path =
     return 0
 
 
-def serve_command(folder: Path, host: str | None, port: int, expires: str) -> int:
+def serve_command(folder: Path, host: str | None, port: int, expires: str, store: Storage) -> int:
     # サーバーの依存は scan / join では使わないので、ここで読み込む
     import uvicorn
 
+    from .jobs import JobManager, analyze_video
     from .server import create_app
     from .webbuild import build_problem
     from .workspace import Workspace
@@ -216,12 +225,12 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     scans = []
     for info in find_videos(folder):
         try:
-            scan = load_or_scan(info)
+            scan = load_or_scan(info, store.cache)
         except ValueError as e:
             # 1 本読めなくても、ほかの動画で使えるようにする
             print(f"{info.path.name} は読み飛ばします: {e}", file=sys.stderr)
             continue
-        ensure_thumbnails(scan)
+        ensure_thumbnails(scan, store.thumbnails)
         scans.append(scan)
     panels = sum(s.candidate_count for s in scans)
     if not scans:
@@ -242,7 +251,11 @@ def serve_command(folder: Path, host: str | None, port: int, expires: str) -> in
     print("同じ Wi-Fi に接続したスマホで QR コードを読み取ってください。終了するには Ctrl+C を押してください。", flush=True)
 
     # スマホから取り込んだ動画も、入力フォルダに置く（次に起動したときも読み込まれる）
-    app = create_app(Workspace(scans), auth, upload_dir=folder)
+    workspace = Workspace(scans, store.project, store.thumbnails, store.clips)
+    jobs = JobManager(workspace, store.previews, store.output)
+    app = create_app(
+        workspace, auth, jobs=jobs, upload_dir=folder, analyze=partial(analyze_video, cache_dir=store.cache), storage=store,
+    )
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="warning"))
     expiry = threading.Timer(lifetime, lambda: setattr(server, "should_exit", True))
     expiry.daemon = True

@@ -200,3 +200,37 @@ test("手順のナビゲーションで今いる手順が分かる", async ({ pa
     await waitForHeading(page, "速度を選ぶ");
     await expect(page.locator("[aria-current=step]")).toContainText("速度");
 });
+
+test("設定で保存先を変え（次の起動で移す予定）、取りやめられる", async ({ page }) => {
+    const { calls } = await mockServer(page);
+    await page.goto("/preferences");
+    await waitForHeading(page, "設定");
+    await page.getByRole("button", { name: "ムービー" }).click();
+    await expect(page.getByLabel("完成版")).toHaveValue("/Users/me/Movies/omoide/output");
+    await page.getByRole("button", { name: "保存先を変える" }).click();
+    await page.getByRole("dialog", { name: "保存先を変えますか" }).getByRole("button", { name: "変える" }).click();
+    await expect(page.getByRole("heading", { name: "次の起動で、保存先を変えます" })).toBeVisible();
+    expect(calls.some((c) => c.method === "PUT" && c.path === "/api/storage")).toBe(true);
+    await expectNoAxeViolations(page, "保存先の変更の予定");
+
+    await page.getByRole("button", { name: "変更を取りやめる" }).click();
+    await expect(page.getByRole("heading", { name: "次の起動で、保存先を変えます" })).toHaveCount(0);
+});
+
+test("設定ですべてのデータを消すと、動画の取り込みからやり直せる", async ({ page }) => {
+    await mockServer(page);
+    await page.goto("/preferences");
+    await waitForHeading(page, "設定");
+    await page.getByRole("button", { name: "すべてのデータを消す" }).click();
+    const dialog = page.getByRole("dialog", { name: "すべてのデータを消しますか" });
+    await expect(dialog).toContainText("元に戻せません");
+    await expectNoAxeViolations(page, "データを消す確認");
+    await dialog.getByRole("button", { name: "消す" }).click();
+    await expect(page.getByText("すべてのデータを消しました")).toBeVisible();
+    await expect(page.getByText("消すデータはありません。")).toBeVisible();
+
+    // 動画がないので、手順の最初（動画の取り込み）へ移る
+    await page.goto("/");
+    await waitForHeading(page, "動画を取り込む");
+    await expect(page.getByText("まだありません")).toBeVisible();
+});

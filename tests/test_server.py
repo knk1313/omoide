@@ -10,13 +10,15 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from setlog_join.auth import ShareAuth
-from setlog_join.jobs import JobManager
+from setlog_join import runtime
+from setlog_join.jobs import JobManager, JobsBusy
 from setlog_join.panels import Panel
 from setlog_join.probe import VideoInfo
 from setlog_join.scan import ScannedClip, VideoScan
 from setlog_join.segments import Clip
 from setlog_join.server import GATE_COOKIE, SESSION_COOKIE, create_app
 from setlog_join.cache import video_key
+from setlog_join.storage import Storage, default_storage
 from setlog_join.workspace import Workspace
 
 PASSWORD = "correct horse"
@@ -459,6 +461,82 @@ class VideosApiTest(ServerTestCase):
         names = [v["name"] for v in self.client.get("/api/project").json()["videos"]]
         self.assertEqual(names, ["later", "setlog"])
         self.assertEqual(self.client.get("/api/clips").json()[0]["video"], "later")
+
+
+class StorageApiTest(ServerTestCase):
+    """保存先の設定（GET/PUT /api/storage）と、データを消す（DELETE /api/data）。"""
+
+    def setUp(self):
+        super().setUp()
+        self.app_dir = self.data_dir / "app"
+        self.app_dir.mkdir()
+        self.store = Storage(input=self.data_dir / "input", output=self.data_dir / "output", work=self.data_dir / "work")
+        self.store.input.mkdir()
+        (self.store.input / ".gitkeep").touch()
+        (self.store.input / "setlog.mov").write_bytes(b"video")
+        self.store.output.mkdir()
+        (self.store.output / "omoide-1.mp4").write_bytes(b"done")
+        self.store.cache.mkdir(parents=True)
+        (self.store.cache / "scan.json").write_text("{}")
+        self.jobs = JobManager(self.workspace, self.store.previews, self.store.output, free_bytes=lambda path: 10**12)
+        self.addCleanup(self.jobs.shutdown)
+        self.client = TestClient(
+            create_app(self.workspace, self.auth, self.web_dir, self.jobs, upload_dir=self.store.input, storage=self.store),
+            follow_redirects=False,
+        )
+        self.login()
+
+    def app_mode(self):
+        """単体アプリとして動いている状態にする。"""
+        for patcher in (
+            mock.patch.object(runtime, "FROZEN", True),
+            mock.patch.object(runtime, "app_dir", return_value=self.app_dir),
+            mock.patch.object(runtime, "bundle_dir", return_value=self.app_dir / "_internal"),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_development_shows_the_folders_but_cannot_change_them(self):
+        body = self.client.get("/api/storage").json()
+        self.assertFalse(body["editable"])
+        self.assertEqual(body["current"]["input"], str(self.store.input))
+        self.assertEqual(body["usage"]["input"], {"count": 1, "bytes": 5})
+        self.assertEqual(body["presets"], [])
+        response = self.client.put("/api/storage", json=default_storage(self.data_dir / "other").to_json())
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("開発環境", response.json()["detail"])
+
+    def test_app_saves_a_new_place_for_the_next_start(self):
+        self.app_mode()
+        target = default_storage(self.data_dir / "Movies" / "omoide")
+        response = self.client.put("/api/storage", json=target.to_json())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["pending"], target.to_json())
+        # 使っている保存先は、次に起動するまで変えない
+        self.assertEqual(response.json()["current"], self.store.to_json())
+        self.assertTrue((self.store.input / "setlog.mov").exists())
+        self.assertEqual(self.client.delete("/api/storage/pending").json()["pending"], None)
+
+    def test_app_rejects_an_unusable_place(self):
+        self.app_mode()
+        response = self.client.put("/api/storage", json={**self.store.to_json(), "output": "relative/out"})
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("フルパス", response.json()["detail"])
+
+    def test_clear_data_removes_everything_and_starts_empty(self):
+        response = self.client.delete("/api/data")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["videos"], [])
+        self.assertEqual(self.client.get("/api/clips").json(), [])
+        self.assertEqual(sorted(p.name for p in self.store.input.iterdir()), [".gitkeep"])
+        self.assertEqual(list(self.store.output.iterdir()), [])
+        self.assertFalse(self.store.work.exists())
+
+    def test_cannot_clear_while_making_a_video(self):
+        with mock.patch.object(JobManager, "clear_data", side_effect=JobsBusy("作成が終わってから")):
+            response = self.client.delete("/api/data")
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue((self.store.input / "setlog.mov").exists())
 
 
 class ErrorResponseTest(ServerTestCase):

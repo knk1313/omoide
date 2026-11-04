@@ -58,3 +58,21 @@ export type Job = {
     /** 取り込んだ動画の解析を終えたときの、その動画。 */
     result: Video | null;
 };
+
+/** 保存先の種類。input = 取り込んだ動画、output = 完成版、work = 作業用ファイル（キャッシュ・サムネイル・プレビューなど）。 */
+export type StorageKind = "input" | "output" | "work";
+
+export type StorageFolders = Record<StorageKind, string>;
+
+export type StorageStatus = {
+    /** 画面から保存先を変えられるか（単体アプリだけ。開発環境では false）。 */
+    editable: boolean;
+    /** 今使っている保存先。 */
+    current: StorageFolders;
+    /** 次に起動したときに移す予定の保存先。 */
+    pending: StorageFolders | null;
+    /** よく使う場所（3 つの保存先をその下にまとめる）。 */
+    presets: (StorageFolders & { label: string })[];
+    /** 今の保存先にあるファイルの数と大きさ。 */
+    usage: Record<StorageKind, { count: number; bytes: number }>;
+};

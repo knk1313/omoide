@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page, Route } from "@playwright/test";
-import type { Job, PanelClip, Project, Speed, Video } from "../src/api/types";
+import type { Job, PanelClip, Project, Speed, StorageFolders, StorageStatus, Video } from "../src/api/types";
 
 // E2E 用の、Mac 側サーバー（docs/api.md）の代わり。page.route で API と動画の要求に応える。
 // 状態（ログイン・採用・速度・撮影日・ジョブ）を持つので、画面の操作の結果が次の画面に反映される。
@@ -56,6 +56,24 @@ export async function mockServer(page: Page, options: MockOptions = {}) {
     const jobs = new Map<string, Job & { polls: number }>();
     const calls: { method: string; path: string; body: unknown }[] = [];
     let jobSeq = 0;
+
+    const base = "/Users/me/omoide";
+    const currentStorage: StorageFolders = { input: `${base}/input`, output: `${base}/output`, work: `${base}/.setlog-join` };
+    let pendingStorage: StorageFolders | null = null;
+    const storageStatus = (): StorageStatus => ({
+        editable: true,
+        current: currentStorage,
+        pending: pendingStorage,
+        presets: [
+            { label: "アプリのフォルダ", ...currentStorage },
+            { label: "ムービー", input: "/Users/me/Movies/omoide/input", output: "/Users/me/Movies/omoide/output", work: "/Users/me/Movies/omoide/.setlog-join" },
+        ],
+        usage: {
+            input: { count: videos.length, bytes: videos.length * 20_000_000 },
+            output: { count: 0, bytes: 0 },
+            work: { count: clips.length * 2, bytes: clips.length * 100_000 },
+        },
+    });
 
     const project = (): Project => {
         const selected = clips.filter((c) => c.selected);
@@ -123,6 +141,22 @@ export async function mockServer(page: Page, options: MockOptions = {}) {
         if (!loggedIn) return json(route, 401, { detail: "ログインしてください" });
 
         if (key === "GET /api/project") return json(route, 200, project());
+        if (key === "GET /api/storage") return json(route, 200, storageStatus());
+        if (key === "PUT /api/storage") {
+            const next = body as StorageFolders;
+            if (!next.input.startsWith("/")) return json(route, 422, { detail: "動画の保存先は、/ から始まる場所（フルパス）で入力してください" });
+            pendingStorage = next;
+            return json(route, 200, storageStatus());
+        }
+        if (key === "DELETE /api/storage/pending") {
+            pendingStorage = null;
+            return json(route, 200, storageStatus());
+        }
+        if (key === "DELETE /api/data") {
+            videos = [];
+            clips = [];
+            return json(route, 200, project());
+        }
         if (key === "GET /api/clips") return json(route, 200, clips);
         if (key === "PATCH /api/settings") {
             speed = (body as { speed: Speed }).speed;
