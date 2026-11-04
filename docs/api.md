@@ -38,6 +38,10 @@
 | `GET /media/preview` | 最新のプレビュー（MP4） | なし |
 | `GET /download/output?name=<名前>` | 最新の完成版（添付ファイルとして返す）。`name`は保存する名前で、パスの区切りや制御文字を除き、80文字までにして`.mp4`を付ける | なし |
 | `DELETE /api/temporary` | プレビューとパネル単体の動画を消す | なし |
+| `GET /api/storage` | 保存先（動画・完成版・作業用ファイル）と、それぞれのファイルの数と大きさ。`editable`は単体アプリだけ`true`。`pending`は次の起動で移す予定の保存先 | なし |
+| `PUT /api/storage` | 保存先を変える。すぐには移さず、次に起動したときに今のファイルを移す。単体アプリだけで、開発環境では409。フルパスでない、ほかの保存先と重なる、空でないフォルダ、書き込めないなどは422 | `{"input": "/Users/me/Movies/omoide/input", "output": "…", "work": "…"}` |
+| `DELETE /api/storage/pending` | 保存先の変更の予定を取りやめる | なし |
+| `DELETE /api/data` | 保存先の動画・完成版・作業用ファイルをすべて消し、動画のない状態に戻す（`main.py clean`と同じ対象）。要約を返す。作成や読み取りの途中は409 | なし |
 
 採用・除外と速度を変えると、その都度`.setlog-join/projects/project.json`へ保存する。
 
