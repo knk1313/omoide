@@ -12,6 +12,7 @@ import io
 import secrets
 import socket
 import threading
+import time
 import webbrowser
 from collections.abc import Callable
 from datetime import datetime
@@ -188,11 +189,20 @@ def launch(store: Storage, tools_available: Callable[[], bool], open_browser: bo
     app = create_launcher_app(controller, token, port, on_quit=quit_server)
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
     url = f"http://127.0.0.1:{port}/launcher/t/{token}"
-    print("omoide の画面をブラウザーで開いています。開かないときは、次の URL をブラウザーで開いてください。")
-    print(url)
-    print("終わるときは、画面の「omoideを終了する」を押すか、この窓で Ctrl+C を押してください。", flush=True)
-    if open_browser:
-        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+
+    def announce() -> None:
+        # 待ち受けを始めてから URL を出し、ブラウザーで開く（先に開くと、つながらないことがある）
+        while not server.started:
+            if server.should_exit:
+                return
+            time.sleep(0.05)
+        print("omoide の画面をブラウザーで開いています。開かないときは、次の URL をブラウザーで開いてください。")
+        print(url)
+        print("終わるときは、画面の「omoideを終了する」を押すか、この窓で Ctrl+C を押してください。", flush=True)
+        if open_browser:
+            webbrowser.open(url)
+
+    threading.Thread(target=announce, name="omoide-announce", daemon=True).start()
     try:
         server.run()
     except KeyboardInterrupt:
