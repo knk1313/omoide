@@ -53,9 +53,14 @@ HOW_TO_START = """omoide の起動のしかた
 2. 開いた窓で、スマホで入力するパスワードを決めて入力する
 3. 表示された QR コードを、同じ Wi-Fi につないだスマホのカメラで読み取る
 
-■ Mac で「開けません」と出たとき
-署名していないアプリのため、最初の 1 回だけ止められる。
-「システム設定」→「プライバシーとセキュリティ」の下の方にある「このまま開く」を押し、もう一度「開く」を押す。
+■ Mac で初めて開く前に（1 回だけ）
+Apple の確認（公証）を受けていないアプリなので、ダウンロードしたままだと「壊れているため開けません」などと出て開けない。
+「ターミナル」を開き、次の 1 行を入力して Enter を押す（omoide フォルダを「ダウンロード」に展開した場合）。
+フォルダを別の場所に置いたときは、最後の ~/Downloads/omoide の代わりに、omoide フォルダをターミナルへドラッグ＆ドロップする。
+
+    xattr -dr com.apple.quarantine ~/Downloads/omoide
+
+これで、ダウンロードしたファイルに付く印が外れ、ダブルクリックで開ける。
 
 ■ Windows で「Windows によって PC が保護されました」と出たとき
 「詳細情報」→「実行」を押す。ファイアウォールの確認が出たら「プライベート ネットワーク」を許可する。
@@ -63,6 +68,39 @@ HOW_TO_START = """omoide の起動のしかた
 取り込んだ動画と作った動画は、このフォルダの input・output に置かれる。
 詳しくは https://github.com/knk1313/omoide を参照。
 """
+
+
+def fix_signatures(app: Path) -> None:
+    """macOS: 含めた Python.framework を署名し直し、中の部品の署名がすべて正しいことを確かめる。
+
+    PyInstaller は Python 本体を Python.framework の中から取り出して入れるが、元の署名はフレームワークの
+    ほかのファイル（_CodeSignature）も対象にしているため、そのままだと署名が壊れた状態になる。ダウンロードした
+    アプリの署名が壊れていると、macOS は「壊れているため開けません」と出して開かせない。
+    Apple の確認（公証）は受けていないので、署名はアドホック（-）にする。
+    """
+    for framework in app.rglob("*.framework"):
+        for version in (framework / "Versions").iterdir():
+            if version.is_dir() and not version.is_symlink():
+                subprocess.run(["codesign", "--force", "--sign", "-", str(version)], check=True, capture_output=True)
+    invalid = [str(p.relative_to(app)) for p in macho_files(app) if not signature_valid(p)]
+    if invalid:
+        sys.exit("署名が正しくない部品があります:\n" + "\n".join(invalid))
+
+
+def macho_files(app: Path) -> list[Path]:
+    """Mach-O（実行ファイル・ライブラリ）のファイル。先頭の 4 バイトで見分ける。"""
+    magics = {b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xce\xfa\xed\xfe"}
+    found = []
+    for path in app.rglob("*"):
+        if path.is_file() and not path.is_symlink():
+            with path.open("rb") as f:
+                if f.read(4) in magics:
+                    found.append(path)
+    return found
+
+
+def signature_valid(path: Path) -> bool:
+    return subprocess.run(["codesign", "--verify", "--strict", str(path)], capture_output=True).returncode == 0
 
 
 def main() -> None:
@@ -78,6 +116,8 @@ def main() -> None:
         check=True,
     )
     app = DIST / "omoide"
+    if platform.system() == "Darwin":
+        fix_signatures(app)
     shutil.copy2(ROOT / "LICENSE", app / "LICENSE.txt")
     (app / "THIRD_PARTY_NOTICES.txt").write_text(notices(), encoding="utf-8")
     (app / "起動のしかた.txt").write_text(HOW_TO_START, encoding="utf-8")
