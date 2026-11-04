@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "@/test/axe";
-import { LoadFailure, Loading, WaitingProgress } from "./PageStatus";
+import { AVATAR_DELAY_MS, LoadFailure, Loading, WaitingProgress } from "./PageStatus";
 
 describe("PageStatus", () => {
     it("読み込み中は、スピナーの読み上げと同じ文言を出す", () => {
@@ -11,11 +11,27 @@ describe("PageStatus", () => {
         expect(screen.getByText("確認しています…")).toHaveAttribute("aria-hidden", "true");
     });
 
-    it("avatar を付けると、スピナーの代わりにアバターを飾りとして出し、文言を読み上げる", async () => {
+    it("avatar を付けると、少し待ってから、スピナーの代わりにアバターを飾りとして出す", async () => {
+        vi.useFakeTimers();
+        try {
+            const { container } = render(<Loading avatar />);
+            // すぐ終わる読み込みではちらつかないよう、初めは何も見せず、読み上げだけに状態を伝える
+            expect(screen.getByRole("status")).toHaveTextContent("読み込んでいます…");
+            expect(screen.getByRole("status")).toHaveClass("sr-only");
+            expect(container.querySelector(".size-avatar")).not.toBeInTheDocument();
+            expect(container.querySelector(".animate-spin")).not.toBeInTheDocument();
+
+            act(() => vi.advanceTimersByTime(AVATAR_DELAY_MS));
+            expect(container.querySelector('.size-avatar[aria-hidden="true"]')).toBeInTheDocument();
+            expect(screen.getByRole("status")).not.toHaveClass("sr-only");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("アバターを出した状態で、アクセシビリティ違反がない", async () => {
         const { container } = render(<Loading avatar />);
-        expect(screen.getByRole("status")).toHaveTextContent("読み込んでいます…");
-        expect(container.querySelector(".animate-spin")).not.toBeInTheDocument();
-        expect(container.querySelector('div[aria-hidden="true"]')).toBeInTheDocument();
+        await waitFor(() => expect(container.querySelector(".size-avatar")).toBeInTheDocument());
         await expectNoA11yViolations(container);
     });
 
