@@ -2,11 +2,25 @@ name: Release
 
 # 単体アプリ（OS ごとの zip）を作る。
 # - v で始まるタグを push すると、3 つの OS で作って確かめ、GitHub Releases に置く
-# - 手動で実行（workflow_dispatch）すると、作って確かめるところまで行い、zip は実行結果の成果物として残す
+# - 配布物に関わるファイルを変えた PR と、手動での実行（workflow_dispatch）では、作って確かめるところまで行い、
+#   zip は実行結果の成果物として残す
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - "packaging/**"
+      - "requirements.txt"
+      - "requirements-build.txt"
+      - "setlog_join/runtime.py"
+      - "setlog_join/cli.py"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
+
+# PR に続けて push したときは、前の実行を止める
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
