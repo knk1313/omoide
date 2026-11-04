@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/Button";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressBar, type ProgressBarProps } from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/cn";
 import { BotAvatar } from "./BotAvatar";
@@ -10,22 +9,17 @@ import { BotAvatar } from "./BotAvatar";
 
 /**
  * 画面のデータを読み込んでいる間。アバターは飾りで、状態は文言で読み上げる。
- * 画面の全体を置き換えるとき（ログインの確認、始める画面）は title を渡し、見出し（h1）を出す。
+ * 画面の全体を置き換えるとき（ログインの確認、始める画面）は title を渡す。見出し（h1）は、画面には出さずに読み上げだけに置く
+ * （見出しのない画面にしないため。見た目は、ほかの画面の読み込み中と同じにする）。
  */
 export function Loading({ label = "読み込んでいます", title }: { label?: string; title?: string }) {
-    const body = (
+    return (
         <div className="flex flex-col items-center justify-center gap-4 py-16 text-16 text-text-muted">
+            {title && <h1 className="sr-only">{title}</h1>}
             <BotAvatar className="size-avatar" />
             <p role="status" className="m-0">
                 {label}…
             </p>
-        </div>
-    );
-    if (!title) return body;
-    return (
-        <div className="flex flex-col gap-6">
-            <PageHeader title={title} />
-            {body}
         </div>
     );
 }

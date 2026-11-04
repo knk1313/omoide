@@ -12,9 +12,9 @@ describe("PageStatus", () => {
         await expectNoA11yViolations(container);
     });
 
-    it("画面の全体を置き換えるときは、見出しも出す", () => {
+    it("画面の全体を置き換えるときは、読み上げだけの見出しを置く", () => {
         render(<Loading label="確認しています" title="omoide" />);
-        expect(screen.getByRole("heading", { level: 1, name: "omoide" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "omoide" })).toHaveClass("sr-only");
         expect(screen.getByRole("status")).toHaveTextContent("確認しています…");
     });
 
