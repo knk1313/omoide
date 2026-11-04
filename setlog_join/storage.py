@@ -70,7 +70,7 @@ def default_storage(base: Path) -> Storage:
 
 def settings_path() -> Path | None:
     """保存先を書くファイル。開発環境では使わない（None）。"""
-    return runtime.app_dir() / SETTINGS_NAME if runtime.FROZEN else None
+    return runtime.settings_dir() / SETTINGS_NAME if runtime.FROZEN else None
 
 
 def editable() -> bool:
@@ -89,6 +89,7 @@ def _read(path: Path | None) -> dict:
 
 
 def _write(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps({"version": SETTINGS_VERSION, **data}, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
@@ -105,7 +106,7 @@ def _parse(value: object, fallback: Storage) -> Storage:
 
 def current() -> Storage:
     """今使っている保存先。"""
-    base = runtime.app_dir() if runtime.FROZEN else Path.cwd()
+    base = runtime.data_dir() if runtime.FROZEN else Path.cwd()
     return _parse(_read(settings_path()).get("storage"), default_storage(base))
 
 
@@ -119,8 +120,8 @@ def presets() -> list[dict[str, str]]:
     """画面に出す、よく使う場所。選ぶと 3 つの保存先をその下にまとめて置く。"""
     home = Path.home()
     movies = home / ("Movies" if sys.platform == "darwin" else "Videos")
-    items = [
-        ("アプリのフォルダ", runtime.app_dir()),
+    items = [] if runtime.app_bundle() else [("アプリのフォルダ", runtime.app_dir())]
+    items += [
         ("ムービー" if sys.platform == "darwin" else "ビデオ", movies / "omoide"),
         ("書類" if sys.platform == "darwin" else "ドキュメント", home / "Documents" / "omoide"),
     ]
@@ -166,6 +167,9 @@ def validate(new: dict[str, str], now: Storage) -> Storage:
             if _inside(folders[a], folders[b]) or _inside(folders[b], folders[a]):
                 raise StorageError(f"{LABELS[a]}と{LABELS[b]}は、別々のフォルダにしてください（同じフォルダや、片方の中には置けません）")
 
+    bundle = runtime.app_bundle()
+    if bundle and any(_inside(p, bundle) for p in folders.values()):
+        raise StorageError("アプリ（omoide.app）の中には置けません。別のフォルダを選んでください")
     if runtime.FROZEN and any(_inside(p, runtime.bundle_dir()) for p in folders.values()):
         raise StorageError("アプリの部品のフォルダ（_internal）の中には置けません。別のフォルダを選んでください")
 
