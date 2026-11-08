@@ -76,4 +76,3 @@ GitHub Actionsが、pushとPRのたびに次の二つのワークフローを実
 ## 出典
 
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/ja/v1.0.0/)
-- [local-meeting-notesのCONTRIBUTING.md](https://github.com/knk1313/local-meeting-notes/blob/main/CONTRIBUTING.md)（同じ作者の既存プロジェクトの運用）

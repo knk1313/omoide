@@ -89,8 +89,6 @@ e2e/                 # Playwright の E2E とモックの API
 scripts/             # デザイントークンの検査
 ```
 
-## ライセンス
-
-[MIT License](LICENSE)
+## 使っているもの
 
 待っている間に出すアバターは、[open-bot-avatar](https://github.com/DominikScholz/open-bot-avatar)（MIT License、Copyright (c) 2026 Dominik Scholz）のライブラリと、ギャラリーのカメラの定義（`gallery/camera.json`）を使っている。
