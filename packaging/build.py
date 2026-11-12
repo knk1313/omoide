@@ -44,10 +44,6 @@ def notices() -> str:
         "Python（PSF License）、FastAPI・Starlette・Pydantic・uvicorn（MIT／BSD）、NumPy（BSD）、qrcode（BSD）などを含む。",
         "各ライブラリのライセンスは、それぞれの配布元（PyPI）を参照。",
         "",
-        "■ open-bot-avatar（スマホの画面で、待っている間に出すカメラのアバター）",
-        "MIT License。Copyright (c) 2026 Dominik Scholz。ソース: https://github.com/DominikScholz/open-bot-avatar",
-        "画面に組み込んだライブラリと、ギャラリーのカメラの定義（gallery/camera.json）を使っている。",
-        "",
     ])
 
 

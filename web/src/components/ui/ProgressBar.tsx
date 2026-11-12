@@ -5,7 +5,6 @@ import { cn } from "@/lib/cn";
 //   - value（0〜1）があれば確定（割合を数字でも示す）、null なら不確定（いつ終わるか分からない処理）。
 //   - 色だけに頼らず、ラベルと割合の文字を添える。バーは role="progressbar" で、読み上げにも割合を渡す。
 //   - 割合の数字は等幅数字にし、増えても位置がずれないようにする。
-//   - align="center" では、ラベル・割合・補足を中央にそろえる（上にアバターを置く WaitingProgress で使う）。
 
 export type ProgressBarProps = {
     /** 画面に出すラベル（例: 「アップロードしています」）。 */
@@ -16,16 +15,14 @@ export type ProgressBarProps = {
     accessibleLabel?: string;
     /** バーの下に置く補足。 */
     description?: string;
-    /** start = ラベルを左、割合を右に置く。center = ラベルと割合を並べて、補足とともに中央にそろえる。 */
-    align?: "start" | "center";
     className?: string;
 };
 
-export function ProgressBar({ label, value, accessibleLabel, description, align = "start", className }: ProgressBarProps) {
+export function ProgressBar({ label, value, accessibleLabel, description, className }: ProgressBarProps) {
     const percent = value === null ? null : Math.round(Math.min(Math.max(value, 0), 1) * 100);
     return (
         <div className={cn("flex flex-col gap-2 text-16 leading-170 tracking-2 text-text", className)}>
-            <div className={cn("flex items-baseline gap-2", align === "center" ? "justify-center text-center" : "justify-between")}>
+            <div className="flex items-baseline justify-between gap-2">
                 <span>{label}</span>
                 {percent !== null && <span className="nums shrink-0 text-text-muted">{percent}%</span>}
             </div>
@@ -45,7 +42,7 @@ export function ProgressBar({ label, value, accessibleLabel, description, align 
                     style={percent === null ? undefined : { width: `${percent}%` }}
                 />
             </div>
-            {description && <p className={cn("m-0 text-text-muted", align === "center" && "text-center")}>{description}</p>}
+            {description && <p className="m-0 text-text-muted">{description}</p>}
         </div>
     );
 }

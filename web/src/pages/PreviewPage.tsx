@@ -3,7 +3,6 @@ import { CheckCircle2, Download } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api } from "@/api/client";
 import type { Job, Project } from "@/api/types";
-import { WaitingProgress } from "@/components/app/PageStatus";
 import VideoPlayer from "@/components/app/VideoPlayer";
 import { Button, ButtonAnchor } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -64,7 +63,7 @@ export default function PreviewPage() {
                 ) : preview.job?.status === "failed" ? (
                     <Failure message={preview.job.error ?? "生成に失敗しました"} onRetry={() => void preview.start()} />
                 ) : (
-                    <Progress label="プレビューを作っています" job={preview.job} avatar />
+                    <Progress label="プレビューを作っています" job={preview.job} />
                 )}
             </section>
 
@@ -152,11 +151,9 @@ export default function PreviewPage() {
 /** 補足に書く、ファイル名に使えない文字。 */
 const FORBIDDEN_HINT = '/ \\ : * ? " < > |';
 
-/** 生成の進み具合。プレビューは画面の主役なので、アバターを添える。完成版はカードの中なので、バーだけにする。 */
-function Progress({ label, job, avatar = false }: { label: string; job: Job | null; avatar?: boolean }) {
-    const Bar = avatar ? WaitingProgress : ProgressBar;
+function Progress({ label, job }: { label: string; job: Job | null }) {
     return (
-        <Bar
+        <ProgressBar
             label={job?.status === "queued" ? "順番を待っています" : label}
             accessibleLabel={label}
             value={job?.progress ?? 0}

@@ -3,7 +3,7 @@ import { Film, Trash2, Upload } from "lucide-react";
 import { useNavigate } from "react-router";
 import { api, ApiError, uploadVideo } from "@/api/client";
 import type { Job, Project, Video } from "@/api/types";
-import { LoadFailure, Loading, WaitingProgress } from "@/components/app/PageStatus";
+import { LoadFailure, Loading } from "@/components/app/PageStatus";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -13,6 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useToast } from "@/components/ui/Toast";
 import BottomBar, { PRIMARY_ACTION } from "@/layouts/BottomBar";
 import { formatDay } from "@/lib/format";
@@ -265,7 +266,7 @@ function UploadStatus({
     // プレビューの画面と同じく、待っている間はカードに入れずに出す。ファイル名は文言に含め、割合と 1 行にまとめる
     const sending = upload.stage === "sending";
     return (
-        <WaitingProgress
+        <ProgressBar
             label={`${upload.fileName}を${sending ? "アップロードしています" : "読み取っています"}`}
             value={sending ? upload.sent : null}
             description={sending ? "画面を閉じずにお待ちください。" : "動画を区切っています。"}
