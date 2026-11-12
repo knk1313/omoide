@@ -88,7 +88,3 @@ src/
 e2e/                 # Playwright の E2E とモックの API
 scripts/             # デザイントークンの検査
 ```
-
-## ライセンス
-
-[MIT License](LICENSE)

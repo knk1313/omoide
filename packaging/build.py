@@ -33,9 +33,6 @@ def notices() -> str:
     return "\n".join([
         "omoide に含まれる他のソフトウェア",
         "",
-        "■ omoide",
-        "MIT License（LICENSE.txt）。ソース: https://github.com/knk1313/omoide",
-        "",
         "■ FFmpeg（ffmpeg/ffmpeg、ffmpeg/ffprobe）",
         "GNU General Public License（GPL）で配布されているビルドを、そのまま含めている。omoide は別のプログラムとして呼び出す。",
         "FFmpeg は FFmpeg の開発者の著作物で、omoide の作者のものではない。https://ffmpeg.org/legal.html",
@@ -199,7 +196,6 @@ def main() -> None:
         shutil.rmtree(app)
         staged.rename(app)
         fix_signatures(app)
-    shutil.copy2(ROOT / "LICENSE", app / "LICENSE.txt")
     (app / "THIRD_PARTY_NOTICES.txt").write_text(notices(), encoding="utf-8")
     (app / "起動のしかた.txt").write_text(HOW_TO_START_MAC if mac else HOW_TO_START, encoding="utf-8")
     if not mac:

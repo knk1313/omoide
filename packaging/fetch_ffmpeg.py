@@ -1,7 +1,7 @@
 """単体アプリに含める ffmpeg・ffprobe を取得し、配布元のハッシュ値で確かめて build/ffmpeg/ に置く。
 
 omoide は完成版の作成に libx264 を使うため、GPL 版のビルドを使う（LGPL 版には libx264 が入っていない）。
-ffmpeg は別のプログラムとして呼び出すだけなので、omoide 本体は MIT のまま配れる。
+ffmpeg は別のプログラムとして呼び出すだけで、omoide 本体には組み込まない。
 取得したビルドの版と入手先は build/ffmpeg/SOURCE.txt に書き、配布物の THIRD_PARTY_NOTICES.txt に載せる。
 
 使い方: python packaging/fetch_ffmpeg.py
