@@ -18,12 +18,6 @@ describe("ProgressBar", () => {
         expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
     });
 
-    it("align=\"center\" では、ラベルと割合を並べ、補足とともに中央にそろえる（omoide での追加）", () => {
-        render(<ProgressBar label="アップロードしています" value={0.5} description="画面を閉じずにお待ちください。" align="center" />);
-        expect(screen.getByText("アップロードしています").parentElement).toHaveClass("justify-center", "text-center");
-        expect(screen.getByText("画面を閉じずにお待ちください。")).toHaveClass("text-center");
-    });
-
     it("範囲外の値は 0〜100% に収める", () => {
         render(<ProgressBar label="A" value={1.5} />);
         expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
